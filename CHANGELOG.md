@@ -1,5 +1,10 @@
 # Historique
 
+## 3.1.2 — 6 novembre 2026
+
+- Reconstruit les cartes embarquées avec le contraste corrigé et les effets de survol ; nouvelle version d’URL pour invalider le cache du navigateur.
+- Accentue l’éclairage, l’ombre et le léger déplacement au survol ; focus clavier visible.
+
 ## 3.1.0 — 6 novembre 2026
 
 - Installation depuis HACS comme dépôt personnalisé de type Intégration ; Home Assistant 2025.7 minimum déclaré.

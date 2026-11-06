@@ -2,14 +2,14 @@
 
 L’intégration locale **Ma maison - Chauffage** conserve une seule liste de pièces, utilisée par l’affichage, les consignes et la commande chaudière. Ajouter, renommer ou retirer une vanne ne nécessite plus de YAML, d’assistants supplémentaires ni de redémarrage HA.
 
-## Installation avec HACS — version 3.1.1
+## Installation avec HACS — version 3.1.2
 
 Prérequis : Home Assistant **2025.7 ou ultérieur**, HACS installé et configuré, compte administrateur HA. Sur Home Assistant OS, si HACS n’est pas encore présent, suivre son [installation officielle, onglet OS/Supervised](https://www.hacs.dev/docs/use/download/download/), puis sa [configuration initiale](https://www.hacs.dev/docs/use/configuration/basic/).
 
 1. [Ouvrir ce dépôt dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=D-Salmon&repository=home-assistant-chauffage&category=integration). Si nécessaire, renseigner l’adresse de votre Home Assistant. Autre chemin : **HACS → ⋮ → Dépôts personnalisés**, URL `https://github.com/D-Salmon/home-assistant-chauffage`, type **Intégration**, puis Ajouter.
-2. Ouvrir **Ma maison - Chauffage** dans HACS et télécharger la version **3.1.1** ou une version ultérieure. Le dépôt est ajouté comme dépôt personnalisé ; il n’est pas dans le catalogue par défaut.
+2. Ouvrir **Ma maison - Chauffage** dans HACS et télécharger la version **3.1.2** ou une version ultérieure. Le dépôt est ajouté comme dépôt personnalisé ; il n’est pas dans le catalogue par défaut.
 3. **Redémarrer Home Assistant**. Ouvrir **Paramètres → Appareils et services → Ajouter une intégration → Ma maison - Chauffage**. Une seule maison est prise en charge ; le chauffage démarre désactivé.
-4. Ajouter la ressource JavaScript : aller dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, cliquer sur **Ajouter une ressource**, entrer `/ma-maison-chauffage-assets/bootstrap.js?v=3.1.1` et sélectionner **Module JavaScript**. L’intégration fournit cette ressource ; aucun fichier n’est à copier.
+4. Ajouter la ressource JavaScript : aller dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, cliquer sur **Ajouter une ressource**, entrer `/ma-maison-chauffage-assets/bootstrap.js?v=3.1.2` et sélectionner **Module JavaScript**. L’intégration fournit cette ressource ; aucun fichier n’est à copier.
 5. Recharger complètement le navigateur. Modifier un tableau de bord, choisir **Ajouter une carte → Manuel**, puis saisir `type: custom:ma-maison-chauffage-card`. La carte peut aussi apparaître dans la liste après l’ajout de la ressource.
 6. Créer les assistants **Planning** souhaités dans **Paramètres → Appareils et services → Entrées → Créer une entrée → Planning** (le libellé peut être « Assistants » selon la traduction). Par exemple : Habituel et Vacances. Un programme contient une semaine complète, avec des horaires différentes en semaine et le week-end.
 7. Dans **Réglages** de la carte, choisir le relais chaudière et ces assistants Planning. Enregistrer en laissant **Chauffage autorisé** décoché.
@@ -103,3 +103,4 @@ Le registre et les échéances sont conservés dans le stockage HA `.storage`, s
 Validation locale : tests de logique, pilote avec services et stockage HA simulés, formulaires dans un DOM simulé. Cette version n’a pas été exécutée sur votre installation HA ni votre chaudière.
 
 Vérifier sur le matériel : une pièce seule, plusieurs pièces, retour au repos, Absent maison, Absent permanent d’une chambre, expiration d’une dérogation, redémarrage, vanne indisponible et retrait de la dernière pièce. Les simulations ne remplacent pas ces essais.
+

@@ -23,7 +23,7 @@ Sur Home Assistant **2025.7 ou ultérieur**, avec HACS installé :
 
 1. [Ouvrir le dépôt dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=D-Salmon&repository=home-assistant-chauffage&category=integration), puis télécharger **Ma maison - Chauffage**. Autre chemin : HACS → Dépôts personnalisés → URL de ce dépôt → type Intégration.
 2. Redémarrer HA, puis ajouter l’intégration **Ma maison - Chauffage** dans Appareils et services.
-3. Dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, ajouter `/ma-maison-chauffage-assets/bootstrap.js?v=3.1.1` comme **Module JavaScript**.
+3. Dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, ajouter `/ma-maison-chauffage-assets/bootstrap.js?v=3.1.2` comme **Module JavaScript**.
 4. Recharger la page et ajouter la carte. Si elle n’est pas listée, choisir **Manuel** et saisir `type: custom:ma-maison-chauffage-card`. Choisir ensuite le relais, les plannings et les vannes.
 
 Les deux cartes sont téléchargées avec l’intégration. La ressource JavaScript doit être déclarée une fois dans le tableau de bord ; aucun fichier n’est à copier. Button Card et les anciens packages ne sont pas nécessaires. Les commandes nécessitent un compte administrateur HA dans cette version.
@@ -95,3 +95,4 @@ Cette commande réécrit les anciens fichiers avec huit entités d’exemple. El
 - [Button Card](https://custom-cards.github.io/button-card/)
 
 Les fichiers ne contiennent que des noms d’entités d’exemple. Ne pas y ajouter de jetons d’accès, mots de passe ou exports privés de Home Assistant.
+

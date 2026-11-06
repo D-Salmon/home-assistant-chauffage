@@ -3,7 +3,7 @@ from pathlib import Path
 
 from homeassistant.components.http import StaticPathConfig
 
-VERSION = "3.1.1"
+VERSION = "3.1.2"
 BASE_URL = "/ma-maison-chauffage-assets"
 MODULE_URL = f"{BASE_URL}/bootstrap.js?v={VERSION}"
 DATA_KEY = "ma_maison_chauffage_frontend"
