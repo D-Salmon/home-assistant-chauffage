@@ -1,0 +1,6 @@
+{
+  "name": "home-assistant-chauffage-tests",
+  "private": true,
+  "scripts": {"test": "node tests/test_dynamic_card.mjs && node tests/test_planning_card.cjs"},
+  "devDependencies": {"happy-dom": "21.0.4"}
+}

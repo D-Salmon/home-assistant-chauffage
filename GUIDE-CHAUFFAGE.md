@@ -1,5 +1,7 @@
 # Ma maison — Chauffage Home Assistant
 
+> Guide des fichiers fixes **V2**. Pour gérer les pièces depuis l’interface, utiliser le [guide V3](GUIDE-V3.md). Ne pas activer les deux pilotes simultanément.
+
 Configuration préparée pour huit TRV Sonoff Gen2 avec Zigbee2MQTT et un relais chaudière à contact sec. Le radiateur de salle de bain reste toujours ouvert. Interface inspirée de Home + Control ; elle fonctionne dans Home Assistant et n’est pas une copie intégrale de l’application Legrand.
 
 ## Ce que vous pouvez faire

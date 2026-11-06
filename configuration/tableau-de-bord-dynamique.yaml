@@ -1,0 +1,7 @@
+# Facultatif : la carte peut aussi être ajoutée depuis le sélecteur visuel HA.
+title: Ma maison
+views:
+  - title: Chauffage
+    path: chauffage
+    cards:
+      - type: custom:ma-maison-chauffage-card

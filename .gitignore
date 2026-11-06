@@ -9,3 +9,4 @@ secrets.yaml
 tests/.generated/
 .DS_Store
 Thumbs.db
+node_modules/

@@ -1,0 +1,20 @@
+command:
+  name: Modifier le chauffage
+  description: Commandes de la carte Ma maison. Administrateur requis ; version attendue obligatoire.
+  fields:
+    operation:
+      required: true
+      selector:
+        select:
+          options: [settings, save_room, remove_room, override, resume, retry]
+    revision:
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 1000000000
+          mode: box
+    payload:
+      required: true
+      selector:
+        object: {}
