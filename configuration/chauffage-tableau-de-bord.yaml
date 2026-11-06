@@ -1,0 +1,1134 @@
+# Configuration à adapter ; voir GUIDE-CHAUFFAGE.md.
+title: Ma maison
+button_card_templates:
+  chauffage_piece:
+    show_label: true
+    show_state: false
+    triggers_update: all
+    tap_action:
+      action: navigate
+      navigation_path: /chauffage-maison/accueil
+    label: '[[[ const n = Number(entity?.attributes?.current_temperature); return entity?.attributes?.current_temperature
+      != null && Number.isFinite(n) ? n.toLocaleString(''fr-FR'',{minimumFractionDigits:1,maximumFractionDigits:1})+''
+      °C'' : ''—''; ]]]'
+    custom_fields:
+      consigne: '[[[ const n=Number(entity?.attributes?.temperature); return entity?.attributes?.temperature !=
+        null && Number.isFinite(n) ? n.toLocaleString(''fr-FR'')+''°'' : ''—''; ]]]'
+      statut: '[[[ if (!entity || [''unavailable'',''unknown''].includes(entity.state)) return ''Indisponible'';
+        const heat=entity.attributes.hvac_action===''heating''?''En chauffe'':([''idle'',''off''].includes(entity.attributes.hvac_action)?''Au
+        repos'':''État inconnu''); if(states[''input_boolean.chauffage_autorise'']?.state!==''on'') return ''Chauffage
+        arrêté''; if(states[''input_boolean.chauffage_absent'']?.state===''on'') return ''Maison absente · ''+heat;
+        const mode=states[''input_select.chauffage_''+variables.room_key+''_mode'']?.state; if(mode && mode!==''Planning'')
+        return mode+'' · ''+heat; const end=Number(states[''input_datetime.chauffage_''+variables.room_key+''_fin'']?.attributes?.timestamp);
+        return (end*1000>Date.now()?''Manuel · '':'''')+heat; ]]]'
+    styles:
+      card:
+      - border-radius: 20px
+      - padding: 16px
+      - box-shadow: none
+      - border: none
+      - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+      - grid-template-areas: '"i n consigne" "i l consigne" "i statut statut"'
+      - grid-template-columns: 54px 1fr 64px
+      - column-gap: 14px
+      icon:
+      - width: 27px
+      - color: '[[[ return entity?.attributes?.hvac_action===''heating'' ? ''#e77829'' : ''var(--secondary-text-color)'';
+          ]]]'
+      img_cell:
+      - background: '[[[ return entity?.attributes?.hvac_action===''heating'' ? ''#fff0e4'' : ''var(--secondary-background-color)'';
+          ]]]'
+      - border-radius: 18px
+      - width: 54px
+      - height: 58px
+      name:
+      - justify-self: start
+      - font-size: 16px
+      - font-weight: '600'
+      label:
+      - justify-self: start
+      - font-size: 17px
+      - margin-top: 4px
+      custom_fields:
+        consigne:
+        - background: '#406bfa'
+        - color: white
+        - padding: 14px 4px
+        - border-radius: 16px
+        - font-size: 18px
+        statut:
+        - justify-self: start
+        - font-size: 12px
+        - color: var(--secondary-text-color)
+        - margin-top: 5px
+  chauffage_bouton:
+    styles:
+      card:
+      - border-radius: 18px
+      - padding: 14px 8px
+      - box-shadow: none
+      icon:
+      - color: '#406bfa'
+      - width: 24px
+      name:
+      - font-size: 12px
+      - margin-top: 8px
+      - white-space: normal
+views:
+- title: Accueil
+  path: accueil
+  icon: mdi:home
+  type: masonry
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: custom:button-card
+      name: Ma maison
+      icon: mdi:home-thermometer-outline
+      show_label: true
+      triggers_update: all
+      tap_action:
+        action: none
+      label: '[[[ if (states[''input_boolean.chauffage_autorise'']?.state!==''on'') return ''Chauffage arrêté'';
+        if (states[''input_boolean.chauffage_absent'']?.state===''on'') return ''Maison absente · consignes par
+        pièce''; return states[''input_select.chauffage_planning'']?.state ?? ''Choisir un planning''; ]]]'
+      custom_fields:
+        etat: '[[[ const r=states[''switch.relais_chaudiere'']?.state; return r===''on'' ? ''Demande chaudière active''
+          : r===''off'' ? ''Chaudière : demande arrêtée'' : ''Relais indisponible''; ]]]'
+      styles:
+        card:
+        - background: 'linear-gradient(140deg, #192778, #4074ff)'
+        - color: white
+        - border-radius: 0 0 28px 28px
+        - padding: 28px 22px
+        - border: none
+        grid:
+        - grid-template-areas: '"n i" "l l" "etat etat"'
+        - grid-template-columns: 1fr 44px
+        name:
+        - font-size: 25px
+        - font-weight: '600'
+        - justify-self: start
+        icon:
+        - color: white
+        - width: 30px
+        label:
+        - justify-self: start
+        - margin-top: 22px
+        - font-size: 16px
+        custom_fields:
+          etat:
+          - justify-self: start
+          - font-size: 13px
+          - margin-top: 8px
+    - type: custom:button-card
+      show_name: false
+      show_icon: false
+      tap_action:
+        action: none
+      custom_fields:
+        planning:
+          card:
+            type: tile
+            entity: input_select.chauffage_planning
+            name: Mon planning
+            hide_state: true
+            icon: mdi:calendar-clock
+            features:
+            - type: select-options
+        absent:
+          card:
+            type: custom:button-card
+            template: chauffage_bouton
+            name: Absent
+            icon: mdi:home-export-outline
+            tap_action:
+              action: call-service
+              service: script.chauffage_basculer_absence
+            entity: input_boolean.chauffage_absent
+            state:
+            - value: 'on'
+              styles:
+                card:
+                - background: '#fff0e4'
+                icon:
+                - color: '#b34c08'
+              name: Absent ✓
+            styles:
+              card:
+              - height: 115px
+      styles:
+        card:
+        - background: none
+        - box-shadow: none
+        - border: none
+        - padding: '0'
+        grid:
+        - grid-template-areas: '"planning absent"'
+        - grid-template-columns: minmax(0, 1fr) 94px
+        - column-gap: 10px
+        custom_fields:
+          planning:
+          - min-width: '0'
+          absent:
+          - align-self: stretch
+    - type: markdown
+      content: '### Mes pièces
+
+        Touchez une pièce pour régler sa température.'
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: salon
+      entity: climate.trv_salon
+      name: Salon
+      icon: mdi:sofa-outline
+      tap_action:
+        action: navigate
+        navigation_path: /chauffage-maison/salon
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: cuisine
+      entity: climate.trv_cuisine
+      name: Cuisine
+      icon: mdi:pot-steam-outline
+      tap_action:
+        action: navigate
+        navigation_path: /chauffage-maison/cuisine
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: chambre_1
+      entity: climate.trv_chambre_1
+      name: Chambre 1
+      icon: mdi:bed-outline
+      tap_action:
+        action: navigate
+        navigation_path: /chauffage-maison/chambre_1
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: chambre_2
+      entity: climate.trv_chambre_2
+      name: Chambre 2
+      icon: mdi:bed-outline
+      tap_action:
+        action: navigate
+        navigation_path: /chauffage-maison/chambre_2
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: chambre_3
+      entity: climate.trv_chambre_3
+      name: Chambre 3
+      icon: mdi:bed-outline
+      tap_action:
+        action: navigate
+        navigation_path: /chauffage-maison/chambre_3
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: bureau
+      entity: climate.trv_bureau
+      name: Bureau
+      icon: mdi:desk
+      tap_action:
+        action: navigate
+        navigation_path: /chauffage-maison/bureau
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: entree
+      entity: climate.trv_entree
+      name: Entrée
+      icon: mdi:door
+      tap_action:
+        action: navigate
+        navigation_path: /chauffage-maison/entree
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: piece_8
+      entity: climate.trv_piece_8
+      name: Pièce 8
+      icon: mdi:radiator
+      tap_action:
+        action: navigate
+        navigation_path: /chauffage-maison/piece_8
+    - type: markdown
+      content: '**Salle de bain** · Radiateur toujours ouvert. Chauffe lorsque la chaudière fait circuler l’eau
+        chaude.'
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Accueil
+        icon: mdi:home-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/accueil
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Plannings
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/plannings
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Réglages
+        icon: mdi:cog-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/reglages
+- title: Plannings
+  path: plannings
+  icon: mdi:calendar-clock
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: custom:chauffage-planning-card
+      schedules:
+      - name: Habituel
+        entity: schedule.chauffage_habituel
+      - name: Télétravail
+        entity: schedule.chauffage_teletravail
+      - name: Vacances à la maison
+        entity: schedule.chauffage_vacances_maison
+    - type: markdown
+      content: 'Chaque plage choisit **Confort, Éco, Nuit ou Absent**. Les températures correspondantes sont réglables
+        dans chaque pièce. Hors plage : Éco. Le mode permanent d’une pièce reste prioritaire sur le planning. L’édition
+        ne change pas le planning actif ; sélectionnez-le sur l’accueil.'
+    - type: custom:button-card
+      template: chauffage_bouton
+      name: Annuler les consignes temporaires
+      icon: mdi:calendar-check
+      tap_action:
+        action: call-service
+        service: script.chauffage_annuler_derogations
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Accueil
+        icon: mdi:home-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/accueil
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Plannings
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/plannings
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Réglages
+        icon: mdi:cog-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/reglages
+- title: Réglages
+  path: reglages
+  icon: mdi:cog
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: entities
+      title: Chauffage
+      show_header_toggle: false
+      entities:
+      - input_boolean.chauffage_autorise
+      - input_number.chauffage_duree_manuelle
+    - type: markdown
+      content: '**Absent** réduit les consignes ; il ne coupe pas le chauffage. **Chauffage autorisé** doit rester
+        actif pour chauffer. Les réglages manuels s’appliquent depuis la fiche de chaque pièce. Ils survivent au
+        redémarrage jusqu’à leur échéance.'
+    - type: conditional
+      conditions:
+      - entity: input_boolean.chauffage_configuration_initialisee
+        state: 'off'
+      card:
+        type: custom:button-card
+        template: chauffage_bouton
+        name: Initialiser les températures
+        icon: mdi:cog-play-outline
+        tap_action:
+          action: call-service
+          service: script.chauffage_initialiser
+    - type: conditional
+      conditions:
+      - entity: input_boolean.chauffage_configuration_initialisee
+        state: 'on'
+      - entity: input_boolean.chauffage_profils_initialises
+        state: 'off'
+      card:
+        type: custom:button-card
+        template: chauffage_bouton
+        name: Initialiser Nuit et Absent
+        icon: mdi:cog-play-outline
+        tap_action:
+          action: call-service
+          service: script.chauffage_initialiser_nouveaux_profils
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Accueil
+        icon: mdi:home-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/accueil
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Plannings
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/plannings
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Réglages
+        icon: mdi:cog-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/reglages
+- title: Salon
+  path: salon
+  subview: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: salon
+      entity: climate.trv_salon
+      name: Salon
+      icon: mdi:sofa-outline
+      tap_action:
+        action: none
+    - type: entities
+      title: Mode de la pièce
+      show_header_toggle: false
+      entities:
+      - input_select.chauffage_salon_mode
+    - type: entities
+      title: Les quatre températures
+      show_header_toggle: false
+      entities:
+      - input_number.chauffage_salon_confort
+      - input_number.chauffage_salon_eco
+      - input_number.chauffage_salon_nuit
+      - input_number.chauffage_salon_absent
+    - type: entities
+      title: Réglage temporaire
+      show_header_toggle: false
+      entities:
+      - entity: input_number.chauffage_salon_manuel
+        name: Température souhaitée
+      - input_number.chauffage_duree_manuelle
+      - entity: input_datetime.chauffage_salon_fin
+        type: simple-entity
+        name: Fin de la dérogation
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Appliquer
+        icon: mdi:check
+        tap_action:
+          action: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+            && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_salon_mode'']?.state===''Planning''
+            ? ''call-service'' : ''none''; ]]]'
+          service: script.chauffage_salon_appliquer
+        triggers_update: all
+        styles:
+          card:
+          - opacity: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+              && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_salon_mode'']?.state===''Planning''
+              ? 1 : 0.4; ]]]'
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Reprendre le planning
+        icon: mdi:calendar-check
+        tap_action:
+          action: call-service
+          service: script.chauffage_salon_planning
+    - type: markdown
+      content: '**Planning** suit les horaires. **Confort, Éco, Nuit ou Absent** maintiennent le profil de cette
+        pièce jusqu’à votre changement. Exemple : Absent pour une chambre inoccupée.
+
+
+        La consigne temporaire est disponible en mode Planning, hors absence de toute la maison. **Reprendre le
+        planning** rétablit le suivi des horaires de cette pièce.'
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Accueil
+        icon: mdi:home-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/accueil
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Plannings
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/plannings
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Réglages
+        icon: mdi:cog-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/reglages
+- title: Cuisine
+  path: cuisine
+  subview: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: cuisine
+      entity: climate.trv_cuisine
+      name: Cuisine
+      icon: mdi:pot-steam-outline
+      tap_action:
+        action: none
+    - type: entities
+      title: Mode de la pièce
+      show_header_toggle: false
+      entities:
+      - input_select.chauffage_cuisine_mode
+    - type: entities
+      title: Les quatre températures
+      show_header_toggle: false
+      entities:
+      - input_number.chauffage_cuisine_confort
+      - input_number.chauffage_cuisine_eco
+      - input_number.chauffage_cuisine_nuit
+      - input_number.chauffage_cuisine_absent
+    - type: entities
+      title: Réglage temporaire
+      show_header_toggle: false
+      entities:
+      - entity: input_number.chauffage_cuisine_manuel
+        name: Température souhaitée
+      - input_number.chauffage_duree_manuelle
+      - entity: input_datetime.chauffage_cuisine_fin
+        type: simple-entity
+        name: Fin de la dérogation
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Appliquer
+        icon: mdi:check
+        tap_action:
+          action: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+            && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_cuisine_mode'']?.state===''Planning''
+            ? ''call-service'' : ''none''; ]]]'
+          service: script.chauffage_cuisine_appliquer
+        triggers_update: all
+        styles:
+          card:
+          - opacity: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+              && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_cuisine_mode'']?.state===''Planning''
+              ? 1 : 0.4; ]]]'
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Reprendre le planning
+        icon: mdi:calendar-check
+        tap_action:
+          action: call-service
+          service: script.chauffage_cuisine_planning
+    - type: markdown
+      content: '**Planning** suit les horaires. **Confort, Éco, Nuit ou Absent** maintiennent le profil de cette
+        pièce jusqu’à votre changement. Exemple : Absent pour une chambre inoccupée.
+
+
+        La consigne temporaire est disponible en mode Planning, hors absence de toute la maison. **Reprendre le
+        planning** rétablit le suivi des horaires de cette pièce.'
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Accueil
+        icon: mdi:home-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/accueil
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Plannings
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/plannings
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Réglages
+        icon: mdi:cog-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/reglages
+- title: Chambre 1
+  path: chambre_1
+  subview: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: chambre_1
+      entity: climate.trv_chambre_1
+      name: Chambre 1
+      icon: mdi:bed-outline
+      tap_action:
+        action: none
+    - type: entities
+      title: Mode de la pièce
+      show_header_toggle: false
+      entities:
+      - input_select.chauffage_chambre_1_mode
+    - type: entities
+      title: Les quatre températures
+      show_header_toggle: false
+      entities:
+      - input_number.chauffage_chambre_1_confort
+      - input_number.chauffage_chambre_1_eco
+      - input_number.chauffage_chambre_1_nuit
+      - input_number.chauffage_chambre_1_absent
+    - type: entities
+      title: Réglage temporaire
+      show_header_toggle: false
+      entities:
+      - entity: input_number.chauffage_chambre_1_manuel
+        name: Température souhaitée
+      - input_number.chauffage_duree_manuelle
+      - entity: input_datetime.chauffage_chambre_1_fin
+        type: simple-entity
+        name: Fin de la dérogation
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Appliquer
+        icon: mdi:check
+        tap_action:
+          action: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+            && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_chambre_1_mode'']?.state===''Planning''
+            ? ''call-service'' : ''none''; ]]]'
+          service: script.chauffage_chambre_1_appliquer
+        triggers_update: all
+        styles:
+          card:
+          - opacity: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+              && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_chambre_1_mode'']?.state===''Planning''
+              ? 1 : 0.4; ]]]'
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Reprendre le planning
+        icon: mdi:calendar-check
+        tap_action:
+          action: call-service
+          service: script.chauffage_chambre_1_planning
+    - type: markdown
+      content: '**Planning** suit les horaires. **Confort, Éco, Nuit ou Absent** maintiennent le profil de cette
+        pièce jusqu’à votre changement. Exemple : Absent pour une chambre inoccupée.
+
+
+        La consigne temporaire est disponible en mode Planning, hors absence de toute la maison. **Reprendre le
+        planning** rétablit le suivi des horaires de cette pièce.'
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Accueil
+        icon: mdi:home-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/accueil
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Plannings
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/plannings
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Réglages
+        icon: mdi:cog-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/reglages
+- title: Chambre 2
+  path: chambre_2
+  subview: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: chambre_2
+      entity: climate.trv_chambre_2
+      name: Chambre 2
+      icon: mdi:bed-outline
+      tap_action:
+        action: none
+    - type: entities
+      title: Mode de la pièce
+      show_header_toggle: false
+      entities:
+      - input_select.chauffage_chambre_2_mode
+    - type: entities
+      title: Les quatre températures
+      show_header_toggle: false
+      entities:
+      - input_number.chauffage_chambre_2_confort
+      - input_number.chauffage_chambre_2_eco
+      - input_number.chauffage_chambre_2_nuit
+      - input_number.chauffage_chambre_2_absent
+    - type: entities
+      title: Réglage temporaire
+      show_header_toggle: false
+      entities:
+      - entity: input_number.chauffage_chambre_2_manuel
+        name: Température souhaitée
+      - input_number.chauffage_duree_manuelle
+      - entity: input_datetime.chauffage_chambre_2_fin
+        type: simple-entity
+        name: Fin de la dérogation
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Appliquer
+        icon: mdi:check
+        tap_action:
+          action: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+            && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_chambre_2_mode'']?.state===''Planning''
+            ? ''call-service'' : ''none''; ]]]'
+          service: script.chauffage_chambre_2_appliquer
+        triggers_update: all
+        styles:
+          card:
+          - opacity: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+              && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_chambre_2_mode'']?.state===''Planning''
+              ? 1 : 0.4; ]]]'
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Reprendre le planning
+        icon: mdi:calendar-check
+        tap_action:
+          action: call-service
+          service: script.chauffage_chambre_2_planning
+    - type: markdown
+      content: '**Planning** suit les horaires. **Confort, Éco, Nuit ou Absent** maintiennent le profil de cette
+        pièce jusqu’à votre changement. Exemple : Absent pour une chambre inoccupée.
+
+
+        La consigne temporaire est disponible en mode Planning, hors absence de toute la maison. **Reprendre le
+        planning** rétablit le suivi des horaires de cette pièce.'
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Accueil
+        icon: mdi:home-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/accueil
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Plannings
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/plannings
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Réglages
+        icon: mdi:cog-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/reglages
+- title: Chambre 3
+  path: chambre_3
+  subview: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: chambre_3
+      entity: climate.trv_chambre_3
+      name: Chambre 3
+      icon: mdi:bed-outline
+      tap_action:
+        action: none
+    - type: entities
+      title: Mode de la pièce
+      show_header_toggle: false
+      entities:
+      - input_select.chauffage_chambre_3_mode
+    - type: entities
+      title: Les quatre températures
+      show_header_toggle: false
+      entities:
+      - input_number.chauffage_chambre_3_confort
+      - input_number.chauffage_chambre_3_eco
+      - input_number.chauffage_chambre_3_nuit
+      - input_number.chauffage_chambre_3_absent
+    - type: entities
+      title: Réglage temporaire
+      show_header_toggle: false
+      entities:
+      - entity: input_number.chauffage_chambre_3_manuel
+        name: Température souhaitée
+      - input_number.chauffage_duree_manuelle
+      - entity: input_datetime.chauffage_chambre_3_fin
+        type: simple-entity
+        name: Fin de la dérogation
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Appliquer
+        icon: mdi:check
+        tap_action:
+          action: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+            && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_chambre_3_mode'']?.state===''Planning''
+            ? ''call-service'' : ''none''; ]]]'
+          service: script.chauffage_chambre_3_appliquer
+        triggers_update: all
+        styles:
+          card:
+          - opacity: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+              && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_chambre_3_mode'']?.state===''Planning''
+              ? 1 : 0.4; ]]]'
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Reprendre le planning
+        icon: mdi:calendar-check
+        tap_action:
+          action: call-service
+          service: script.chauffage_chambre_3_planning
+    - type: markdown
+      content: '**Planning** suit les horaires. **Confort, Éco, Nuit ou Absent** maintiennent le profil de cette
+        pièce jusqu’à votre changement. Exemple : Absent pour une chambre inoccupée.
+
+
+        La consigne temporaire est disponible en mode Planning, hors absence de toute la maison. **Reprendre le
+        planning** rétablit le suivi des horaires de cette pièce.'
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Accueil
+        icon: mdi:home-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/accueil
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Plannings
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/plannings
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Réglages
+        icon: mdi:cog-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/reglages
+- title: Bureau
+  path: bureau
+  subview: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: bureau
+      entity: climate.trv_bureau
+      name: Bureau
+      icon: mdi:desk
+      tap_action:
+        action: none
+    - type: entities
+      title: Mode de la pièce
+      show_header_toggle: false
+      entities:
+      - input_select.chauffage_bureau_mode
+    - type: entities
+      title: Les quatre températures
+      show_header_toggle: false
+      entities:
+      - input_number.chauffage_bureau_confort
+      - input_number.chauffage_bureau_eco
+      - input_number.chauffage_bureau_nuit
+      - input_number.chauffage_bureau_absent
+    - type: entities
+      title: Réglage temporaire
+      show_header_toggle: false
+      entities:
+      - entity: input_number.chauffage_bureau_manuel
+        name: Température souhaitée
+      - input_number.chauffage_duree_manuelle
+      - entity: input_datetime.chauffage_bureau_fin
+        type: simple-entity
+        name: Fin de la dérogation
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Appliquer
+        icon: mdi:check
+        tap_action:
+          action: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+            && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_bureau_mode'']?.state===''Planning''
+            ? ''call-service'' : ''none''; ]]]'
+          service: script.chauffage_bureau_appliquer
+        triggers_update: all
+        styles:
+          card:
+          - opacity: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+              && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_bureau_mode'']?.state===''Planning''
+              ? 1 : 0.4; ]]]'
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Reprendre le planning
+        icon: mdi:calendar-check
+        tap_action:
+          action: call-service
+          service: script.chauffage_bureau_planning
+    - type: markdown
+      content: '**Planning** suit les horaires. **Confort, Éco, Nuit ou Absent** maintiennent le profil de cette
+        pièce jusqu’à votre changement. Exemple : Absent pour une chambre inoccupée.
+
+
+        La consigne temporaire est disponible en mode Planning, hors absence de toute la maison. **Reprendre le
+        planning** rétablit le suivi des horaires de cette pièce.'
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Accueil
+        icon: mdi:home-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/accueil
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Plannings
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/plannings
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Réglages
+        icon: mdi:cog-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/reglages
+- title: Entrée
+  path: entree
+  subview: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: entree
+      entity: climate.trv_entree
+      name: Entrée
+      icon: mdi:door
+      tap_action:
+        action: none
+    - type: entities
+      title: Mode de la pièce
+      show_header_toggle: false
+      entities:
+      - input_select.chauffage_entree_mode
+    - type: entities
+      title: Les quatre températures
+      show_header_toggle: false
+      entities:
+      - input_number.chauffage_entree_confort
+      - input_number.chauffage_entree_eco
+      - input_number.chauffage_entree_nuit
+      - input_number.chauffage_entree_absent
+    - type: entities
+      title: Réglage temporaire
+      show_header_toggle: false
+      entities:
+      - entity: input_number.chauffage_entree_manuel
+        name: Température souhaitée
+      - input_number.chauffage_duree_manuelle
+      - entity: input_datetime.chauffage_entree_fin
+        type: simple-entity
+        name: Fin de la dérogation
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Appliquer
+        icon: mdi:check
+        tap_action:
+          action: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+            && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_entree_mode'']?.state===''Planning''
+            ? ''call-service'' : ''none''; ]]]'
+          service: script.chauffage_entree_appliquer
+        triggers_update: all
+        styles:
+          card:
+          - opacity: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+              && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_entree_mode'']?.state===''Planning''
+              ? 1 : 0.4; ]]]'
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Reprendre le planning
+        icon: mdi:calendar-check
+        tap_action:
+          action: call-service
+          service: script.chauffage_entree_planning
+    - type: markdown
+      content: '**Planning** suit les horaires. **Confort, Éco, Nuit ou Absent** maintiennent le profil de cette
+        pièce jusqu’à votre changement. Exemple : Absent pour une chambre inoccupée.
+
+
+        La consigne temporaire est disponible en mode Planning, hors absence de toute la maison. **Reprendre le
+        planning** rétablit le suivi des horaires de cette pièce.'
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Accueil
+        icon: mdi:home-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/accueil
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Plannings
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/plannings
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Réglages
+        icon: mdi:cog-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/reglages
+- title: Pièce 8
+  path: piece_8
+  subview: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: custom:button-card
+      template: chauffage_piece
+      variables:
+        room_key: piece_8
+      entity: climate.trv_piece_8
+      name: Pièce 8
+      icon: mdi:radiator
+      tap_action:
+        action: none
+    - type: entities
+      title: Mode de la pièce
+      show_header_toggle: false
+      entities:
+      - input_select.chauffage_piece_8_mode
+    - type: entities
+      title: Les quatre températures
+      show_header_toggle: false
+      entities:
+      - input_number.chauffage_piece_8_confort
+      - input_number.chauffage_piece_8_eco
+      - input_number.chauffage_piece_8_nuit
+      - input_number.chauffage_piece_8_absent
+    - type: entities
+      title: Réglage temporaire
+      show_header_toggle: false
+      entities:
+      - entity: input_number.chauffage_piece_8_manuel
+        name: Température souhaitée
+      - input_number.chauffage_duree_manuelle
+      - entity: input_datetime.chauffage_piece_8_fin
+        type: simple-entity
+        name: Fin de la dérogation
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Appliquer
+        icon: mdi:check
+        tap_action:
+          action: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+            && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_piece_8_mode'']?.state===''Planning''
+            ? ''call-service'' : ''none''; ]]]'
+          service: script.chauffage_piece_8_appliquer
+        triggers_update: all
+        styles:
+          card:
+          - opacity: '[[[ return states[''input_boolean.chauffage_autorise'']?.state===''on'' && states[''input_boolean.chauffage_profils_initialises'']?.state===''on''
+              && states[''input_boolean.chauffage_absent'']?.state===''off'' && states[''input_select.chauffage_piece_8_mode'']?.state===''Planning''
+              ? 1 : 0.4; ]]]'
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Reprendre le planning
+        icon: mdi:calendar-check
+        tap_action:
+          action: call-service
+          service: script.chauffage_piece_8_planning
+    - type: markdown
+      content: '**Planning** suit les horaires. **Confort, Éco, Nuit ou Absent** maintiennent le profil de cette
+        pièce jusqu’à votre changement. Exemple : Absent pour une chambre inoccupée.
+
+
+        La consigne temporaire est disponible en mode Planning, hors absence de toute la maison. **Reprendre le
+        planning** rétablit le suivi des horaires de cette pièce.'
+    - type: horizontal-stack
+      cards:
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Accueil
+        icon: mdi:home-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/accueil
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Plannings
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/plannings
+      - type: custom:button-card
+        template: chauffage_bouton
+        name: Réglages
+        icon: mdi:cog-outline
+        tap_action:
+          action: navigate
+          navigation_path: /chauffage-maison/reglages

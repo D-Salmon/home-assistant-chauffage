@@ -1,0 +1,1344 @@
+# Configuration à adapter ; voir GUIDE-CHAUFFAGE.md.
+input_boolean:
+  chauffage_absent:
+    name: Absent
+    icon: mdi:home-export-outline
+  chauffage_configuration_initialisee:
+    name: Chauffage - réglages initialisés
+  chauffage_profils_initialises:
+    name: Chauffage - quatre profils initialisés
+input_select:
+  chauffage_planning:
+    name: Mon planning
+    icon: mdi:calendar-clock
+    options:
+    - Habituel
+    - Télétravail
+    - Vacances à la maison
+  chauffage_salon_mode:
+    name: Salon - mode
+    options:
+    - Planning
+    - Confort
+    - Éco
+    - Nuit
+    - Absent
+    icon: mdi:thermostat
+  chauffage_cuisine_mode:
+    name: Cuisine - mode
+    options:
+    - Planning
+    - Confort
+    - Éco
+    - Nuit
+    - Absent
+    icon: mdi:thermostat
+  chauffage_chambre_1_mode:
+    name: Chambre 1 - mode
+    options:
+    - Planning
+    - Confort
+    - Éco
+    - Nuit
+    - Absent
+    icon: mdi:thermostat
+  chauffage_chambre_2_mode:
+    name: Chambre 2 - mode
+    options:
+    - Planning
+    - Confort
+    - Éco
+    - Nuit
+    - Absent
+    icon: mdi:thermostat
+  chauffage_chambre_3_mode:
+    name: Chambre 3 - mode
+    options:
+    - Planning
+    - Confort
+    - Éco
+    - Nuit
+    - Absent
+    icon: mdi:thermostat
+  chauffage_bureau_mode:
+    name: Bureau - mode
+    options:
+    - Planning
+    - Confort
+    - Éco
+    - Nuit
+    - Absent
+    icon: mdi:thermostat
+  chauffage_entree_mode:
+    name: Entrée - mode
+    options:
+    - Planning
+    - Confort
+    - Éco
+    - Nuit
+    - Absent
+    icon: mdi:thermostat
+  chauffage_piece_8_mode:
+    name: Pièce 8 - mode
+    options:
+    - Planning
+    - Confort
+    - Éco
+    - Nuit
+    - Absent
+    icon: mdi:thermostat
+input_number:
+  chauffage_duree_manuelle:
+    name: Durée de la prochaine dérogation
+    min: 0.5
+    max: 12
+    step: 0.5
+    unit_of_measurement: h
+    mode: box
+  chauffage_salon_confort:
+    name: Salon - Confort
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_salon_eco:
+    name: Salon - Éco
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_salon_nuit:
+    name: Salon - Nuit
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_salon_absent:
+    name: Salon - Absent
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_salon_manuel:
+    name: Salon - Nouvelle consigne
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_salon_cible:
+    name: Salon - Consigne temporaire active
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_cuisine_confort:
+    name: Cuisine - Confort
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_cuisine_eco:
+    name: Cuisine - Éco
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_cuisine_nuit:
+    name: Cuisine - Nuit
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_cuisine_absent:
+    name: Cuisine - Absent
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_cuisine_manuel:
+    name: Cuisine - Nouvelle consigne
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_cuisine_cible:
+    name: Cuisine - Consigne temporaire active
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_1_confort:
+    name: Chambre 1 - Confort
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_1_eco:
+    name: Chambre 1 - Éco
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_1_nuit:
+    name: Chambre 1 - Nuit
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_1_absent:
+    name: Chambre 1 - Absent
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_1_manuel:
+    name: Chambre 1 - Nouvelle consigne
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_1_cible:
+    name: Chambre 1 - Consigne temporaire active
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_2_confort:
+    name: Chambre 2 - Confort
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_2_eco:
+    name: Chambre 2 - Éco
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_2_nuit:
+    name: Chambre 2 - Nuit
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_2_absent:
+    name: Chambre 2 - Absent
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_2_manuel:
+    name: Chambre 2 - Nouvelle consigne
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_2_cible:
+    name: Chambre 2 - Consigne temporaire active
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_3_confort:
+    name: Chambre 3 - Confort
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_3_eco:
+    name: Chambre 3 - Éco
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_3_nuit:
+    name: Chambre 3 - Nuit
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_3_absent:
+    name: Chambre 3 - Absent
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_3_manuel:
+    name: Chambre 3 - Nouvelle consigne
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_chambre_3_cible:
+    name: Chambre 3 - Consigne temporaire active
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_bureau_confort:
+    name: Bureau - Confort
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_bureau_eco:
+    name: Bureau - Éco
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_bureau_nuit:
+    name: Bureau - Nuit
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_bureau_absent:
+    name: Bureau - Absent
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_bureau_manuel:
+    name: Bureau - Nouvelle consigne
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_bureau_cible:
+    name: Bureau - Consigne temporaire active
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_entree_confort:
+    name: Entrée - Confort
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_entree_eco:
+    name: Entrée - Éco
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_entree_nuit:
+    name: Entrée - Nuit
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_entree_absent:
+    name: Entrée - Absent
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_entree_manuel:
+    name: Entrée - Nouvelle consigne
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_entree_cible:
+    name: Entrée - Consigne temporaire active
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_piece_8_confort:
+    name: Pièce 8 - Confort
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_piece_8_eco:
+    name: Pièce 8 - Éco
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_piece_8_nuit:
+    name: Pièce 8 - Nuit
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_piece_8_absent:
+    name: Pièce 8 - Absent
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_piece_8_manuel:
+    name: Pièce 8 - Nouvelle consigne
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+  chauffage_piece_8_cible:
+    name: Pièce 8 - Consigne temporaire active
+    min: 5
+    max: 25
+    step: 0.5
+    unit_of_measurement: °C
+    mode: box
+input_datetime:
+  chauffage_salon_fin:
+    name: Salon - fin de dérogation
+    has_date: true
+    has_time: true
+  chauffage_cuisine_fin:
+    name: Cuisine - fin de dérogation
+    has_date: true
+    has_time: true
+  chauffage_chambre_1_fin:
+    name: Chambre 1 - fin de dérogation
+    has_date: true
+    has_time: true
+  chauffage_chambre_2_fin:
+    name: Chambre 2 - fin de dérogation
+    has_date: true
+    has_time: true
+  chauffage_chambre_3_fin:
+    name: Chambre 3 - fin de dérogation
+    has_date: true
+    has_time: true
+  chauffage_bureau_fin:
+    name: Bureau - fin de dérogation
+    has_date: true
+    has_time: true
+  chauffage_entree_fin:
+    name: Entrée - fin de dérogation
+    has_date: true
+    has_time: true
+  chauffage_piece_8_fin:
+    name: Pièce 8 - fin de dérogation
+    has_date: true
+    has_time: true
+script:
+  chauffage_initialiser:
+    alias: Chauffage - initialiser une seule fois
+    mode: single
+    sequence:
+    - condition: state
+      entity_id: input_boolean.chauffage_autorise
+      state: 'off'
+    - condition: state
+      entity_id: input_boolean.chauffage_configuration_initialisee
+      state: 'off'
+    - service: input_number.set_value
+      target:
+        entity_id:
+        - input_number.chauffage_salon_confort
+        - input_number.chauffage_cuisine_confort
+        - input_number.chauffage_chambre_1_confort
+        - input_number.chauffage_chambre_2_confort
+        - input_number.chauffage_chambre_3_confort
+        - input_number.chauffage_bureau_confort
+        - input_number.chauffage_entree_confort
+        - input_number.chauffage_piece_8_confort
+      data:
+        value: 20
+    - service: input_number.set_value
+      target:
+        entity_id:
+        - input_number.chauffage_salon_eco
+        - input_number.chauffage_cuisine_eco
+        - input_number.chauffage_chambre_1_eco
+        - input_number.chauffage_chambre_2_eco
+        - input_number.chauffage_chambre_3_eco
+        - input_number.chauffage_bureau_eco
+        - input_number.chauffage_entree_eco
+        - input_number.chauffage_piece_8_eco
+      data:
+        value: 17
+    - service: input_number.set_value
+      target:
+        entity_id:
+        - input_number.chauffage_salon_nuit
+        - input_number.chauffage_cuisine_nuit
+        - input_number.chauffage_chambre_1_nuit
+        - input_number.chauffage_chambre_2_nuit
+        - input_number.chauffage_chambre_3_nuit
+        - input_number.chauffage_bureau_nuit
+        - input_number.chauffage_entree_nuit
+        - input_number.chauffage_piece_8_nuit
+      data:
+        value: 17
+    - service: input_number.set_value
+      target:
+        entity_id:
+        - input_number.chauffage_salon_absent
+        - input_number.chauffage_cuisine_absent
+        - input_number.chauffage_chambre_1_absent
+        - input_number.chauffage_chambre_2_absent
+        - input_number.chauffage_chambre_3_absent
+        - input_number.chauffage_bureau_absent
+        - input_number.chauffage_entree_absent
+        - input_number.chauffage_piece_8_absent
+      data:
+        value: 14
+    - service: input_number.set_value
+      target:
+        entity_id:
+        - input_number.chauffage_salon_manuel
+        - input_number.chauffage_cuisine_manuel
+        - input_number.chauffage_chambre_1_manuel
+        - input_number.chauffage_chambre_2_manuel
+        - input_number.chauffage_chambre_3_manuel
+        - input_number.chauffage_bureau_manuel
+        - input_number.chauffage_entree_manuel
+        - input_number.chauffage_piece_8_manuel
+      data:
+        value: 20
+    - service: input_number.set_value
+      target:
+        entity_id:
+        - input_number.chauffage_salon_cible
+        - input_number.chauffage_cuisine_cible
+        - input_number.chauffage_chambre_1_cible
+        - input_number.chauffage_chambre_2_cible
+        - input_number.chauffage_chambre_3_cible
+        - input_number.chauffage_bureau_cible
+        - input_number.chauffage_entree_cible
+        - input_number.chauffage_piece_8_cible
+      data:
+        value: 20
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.chauffage_duree_manuelle
+      data:
+        value: 3
+    - &id001
+      service: input_datetime.set_datetime
+      target:
+        entity_id:
+        - input_datetime.chauffage_salon_fin
+        - input_datetime.chauffage_cuisine_fin
+        - input_datetime.chauffage_chambre_1_fin
+        - input_datetime.chauffage_chambre_2_fin
+        - input_datetime.chauffage_chambre_3_fin
+        - input_datetime.chauffage_bureau_fin
+        - input_datetime.chauffage_entree_fin
+        - input_datetime.chauffage_piece_8_fin
+      data:
+        datetime: '2000-01-01 00:00:00'
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.chauffage_absent
+    - service: input_select.select_option
+      target:
+        entity_id:
+        - input_select.chauffage_salon_mode
+        - input_select.chauffage_cuisine_mode
+        - input_select.chauffage_chambre_1_mode
+        - input_select.chauffage_chambre_2_mode
+        - input_select.chauffage_chambre_3_mode
+        - input_select.chauffage_bureau_mode
+        - input_select.chauffage_entree_mode
+        - input_select.chauffage_piece_8_mode
+      data:
+        option: Planning
+    - service: input_boolean.turn_on
+      target:
+        entity_id:
+        - input_boolean.chauffage_configuration_initialisee
+        - input_boolean.chauffage_profils_initialises
+  chauffage_initialiser_nouveaux_profils:
+    alias: Chauffage - initialiser Nuit et Absent sans changer Confort et Éco
+    mode: single
+    sequence:
+    - condition: state
+      entity_id: input_boolean.chauffage_autorise
+      state: 'off'
+    - condition: state
+      entity_id: input_boolean.chauffage_configuration_initialisee
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_profils_initialises
+      state: 'off'
+    - service: input_number.set_value
+      target:
+        entity_id:
+        - input_number.chauffage_salon_nuit
+        - input_number.chauffage_cuisine_nuit
+        - input_number.chauffage_chambre_1_nuit
+        - input_number.chauffage_chambre_2_nuit
+        - input_number.chauffage_chambre_3_nuit
+        - input_number.chauffage_bureau_nuit
+        - input_number.chauffage_entree_nuit
+        - input_number.chauffage_piece_8_nuit
+      data:
+        value: 17
+    - service: input_number.set_value
+      target:
+        entity_id:
+        - input_number.chauffage_salon_absent
+        - input_number.chauffage_cuisine_absent
+        - input_number.chauffage_chambre_1_absent
+        - input_number.chauffage_chambre_2_absent
+        - input_number.chauffage_chambre_3_absent
+        - input_number.chauffage_bureau_absent
+        - input_number.chauffage_entree_absent
+        - input_number.chauffage_piece_8_absent
+      data:
+        value: 14
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.chauffage_profils_initialises
+  chauffage_basculer_absence:
+    alias: Chauffage - Absent / retour
+    mode: single
+    sequence:
+    - *id001
+    - service: input_boolean.toggle
+      target:
+        entity_id: input_boolean.chauffage_absent
+  chauffage_annuler_derogations:
+    alias: Chauffage - reprendre le planning partout
+    mode: single
+    sequence:
+    - *id001
+  chauffage_salon_appliquer:
+    alias: Salon - appliquer la consigne temporaire
+    mode: restart
+    sequence:
+    - condition: state
+      entity_id: input_boolean.chauffage_autorise
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_configuration_initialisee
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_absent
+      state: 'off'
+    - condition: state
+      entity_id: input_select.chauffage_salon_mode
+      state: Planning
+    - condition: state
+      entity_id: input_boolean.chauffage_profils_initialises
+      state: 'on'
+    - condition: template
+      value_template: '{{ 5 <= states(''input_number.chauffage_salon_manuel'') | float(-1) <= 25 and 0.5 <= states(''input_number.chauffage_duree_manuelle'')
+        | float(-1) <= 12 }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.chauffage_salon_cible
+      data:
+        value: '{{ states(''input_number.chauffage_salon_manuel'') | float }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_salon_fin
+      data:
+        timestamp: '{{ as_timestamp(now()) + states(''input_number.chauffage_duree_manuelle'') | float * 3600 }}'
+  chauffage_salon_planning:
+    alias: Salon - reprendre le planning
+    mode: single
+    sequence:
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_salon_fin
+      data:
+        datetime: '2000-01-01 00:00:00'
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.chauffage_salon_mode
+      data:
+        option: Planning
+  chauffage_cuisine_appliquer:
+    alias: Cuisine - appliquer la consigne temporaire
+    mode: restart
+    sequence:
+    - condition: state
+      entity_id: input_boolean.chauffage_autorise
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_configuration_initialisee
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_absent
+      state: 'off'
+    - condition: state
+      entity_id: input_select.chauffage_cuisine_mode
+      state: Planning
+    - condition: state
+      entity_id: input_boolean.chauffage_profils_initialises
+      state: 'on'
+    - condition: template
+      value_template: '{{ 5 <= states(''input_number.chauffage_cuisine_manuel'') | float(-1) <= 25 and 0.5 <= states(''input_number.chauffage_duree_manuelle'')
+        | float(-1) <= 12 }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.chauffage_cuisine_cible
+      data:
+        value: '{{ states(''input_number.chauffage_cuisine_manuel'') | float }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_cuisine_fin
+      data:
+        timestamp: '{{ as_timestamp(now()) + states(''input_number.chauffage_duree_manuelle'') | float * 3600 }}'
+  chauffage_cuisine_planning:
+    alias: Cuisine - reprendre le planning
+    mode: single
+    sequence:
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_cuisine_fin
+      data:
+        datetime: '2000-01-01 00:00:00'
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.chauffage_cuisine_mode
+      data:
+        option: Planning
+  chauffage_chambre_1_appliquer:
+    alias: Chambre 1 - appliquer la consigne temporaire
+    mode: restart
+    sequence:
+    - condition: state
+      entity_id: input_boolean.chauffage_autorise
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_configuration_initialisee
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_absent
+      state: 'off'
+    - condition: state
+      entity_id: input_select.chauffage_chambre_1_mode
+      state: Planning
+    - condition: state
+      entity_id: input_boolean.chauffage_profils_initialises
+      state: 'on'
+    - condition: template
+      value_template: '{{ 5 <= states(''input_number.chauffage_chambre_1_manuel'') | float(-1) <= 25 and 0.5 <=
+        states(''input_number.chauffage_duree_manuelle'') | float(-1) <= 12 }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.chauffage_chambre_1_cible
+      data:
+        value: '{{ states(''input_number.chauffage_chambre_1_manuel'') | float }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_chambre_1_fin
+      data:
+        timestamp: '{{ as_timestamp(now()) + states(''input_number.chauffage_duree_manuelle'') | float * 3600 }}'
+  chauffage_chambre_1_planning:
+    alias: Chambre 1 - reprendre le planning
+    mode: single
+    sequence:
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_chambre_1_fin
+      data:
+        datetime: '2000-01-01 00:00:00'
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.chauffage_chambre_1_mode
+      data:
+        option: Planning
+  chauffage_chambre_2_appliquer:
+    alias: Chambre 2 - appliquer la consigne temporaire
+    mode: restart
+    sequence:
+    - condition: state
+      entity_id: input_boolean.chauffage_autorise
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_configuration_initialisee
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_absent
+      state: 'off'
+    - condition: state
+      entity_id: input_select.chauffage_chambre_2_mode
+      state: Planning
+    - condition: state
+      entity_id: input_boolean.chauffage_profils_initialises
+      state: 'on'
+    - condition: template
+      value_template: '{{ 5 <= states(''input_number.chauffage_chambre_2_manuel'') | float(-1) <= 25 and 0.5 <=
+        states(''input_number.chauffage_duree_manuelle'') | float(-1) <= 12 }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.chauffage_chambre_2_cible
+      data:
+        value: '{{ states(''input_number.chauffage_chambre_2_manuel'') | float }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_chambre_2_fin
+      data:
+        timestamp: '{{ as_timestamp(now()) + states(''input_number.chauffage_duree_manuelle'') | float * 3600 }}'
+  chauffage_chambre_2_planning:
+    alias: Chambre 2 - reprendre le planning
+    mode: single
+    sequence:
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_chambre_2_fin
+      data:
+        datetime: '2000-01-01 00:00:00'
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.chauffage_chambre_2_mode
+      data:
+        option: Planning
+  chauffage_chambre_3_appliquer:
+    alias: Chambre 3 - appliquer la consigne temporaire
+    mode: restart
+    sequence:
+    - condition: state
+      entity_id: input_boolean.chauffage_autorise
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_configuration_initialisee
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_absent
+      state: 'off'
+    - condition: state
+      entity_id: input_select.chauffage_chambre_3_mode
+      state: Planning
+    - condition: state
+      entity_id: input_boolean.chauffage_profils_initialises
+      state: 'on'
+    - condition: template
+      value_template: '{{ 5 <= states(''input_number.chauffage_chambre_3_manuel'') | float(-1) <= 25 and 0.5 <=
+        states(''input_number.chauffage_duree_manuelle'') | float(-1) <= 12 }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.chauffage_chambre_3_cible
+      data:
+        value: '{{ states(''input_number.chauffage_chambre_3_manuel'') | float }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_chambre_3_fin
+      data:
+        timestamp: '{{ as_timestamp(now()) + states(''input_number.chauffage_duree_manuelle'') | float * 3600 }}'
+  chauffage_chambre_3_planning:
+    alias: Chambre 3 - reprendre le planning
+    mode: single
+    sequence:
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_chambre_3_fin
+      data:
+        datetime: '2000-01-01 00:00:00'
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.chauffage_chambre_3_mode
+      data:
+        option: Planning
+  chauffage_bureau_appliquer:
+    alias: Bureau - appliquer la consigne temporaire
+    mode: restart
+    sequence:
+    - condition: state
+      entity_id: input_boolean.chauffage_autorise
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_configuration_initialisee
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_absent
+      state: 'off'
+    - condition: state
+      entity_id: input_select.chauffage_bureau_mode
+      state: Planning
+    - condition: state
+      entity_id: input_boolean.chauffage_profils_initialises
+      state: 'on'
+    - condition: template
+      value_template: '{{ 5 <= states(''input_number.chauffage_bureau_manuel'') | float(-1) <= 25 and 0.5 <= states(''input_number.chauffage_duree_manuelle'')
+        | float(-1) <= 12 }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.chauffage_bureau_cible
+      data:
+        value: '{{ states(''input_number.chauffage_bureau_manuel'') | float }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_bureau_fin
+      data:
+        timestamp: '{{ as_timestamp(now()) + states(''input_number.chauffage_duree_manuelle'') | float * 3600 }}'
+  chauffage_bureau_planning:
+    alias: Bureau - reprendre le planning
+    mode: single
+    sequence:
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_bureau_fin
+      data:
+        datetime: '2000-01-01 00:00:00'
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.chauffage_bureau_mode
+      data:
+        option: Planning
+  chauffage_entree_appliquer:
+    alias: Entrée - appliquer la consigne temporaire
+    mode: restart
+    sequence:
+    - condition: state
+      entity_id: input_boolean.chauffage_autorise
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_configuration_initialisee
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_absent
+      state: 'off'
+    - condition: state
+      entity_id: input_select.chauffage_entree_mode
+      state: Planning
+    - condition: state
+      entity_id: input_boolean.chauffage_profils_initialises
+      state: 'on'
+    - condition: template
+      value_template: '{{ 5 <= states(''input_number.chauffage_entree_manuel'') | float(-1) <= 25 and 0.5 <= states(''input_number.chauffage_duree_manuelle'')
+        | float(-1) <= 12 }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.chauffage_entree_cible
+      data:
+        value: '{{ states(''input_number.chauffage_entree_manuel'') | float }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_entree_fin
+      data:
+        timestamp: '{{ as_timestamp(now()) + states(''input_number.chauffage_duree_manuelle'') | float * 3600 }}'
+  chauffage_entree_planning:
+    alias: Entrée - reprendre le planning
+    mode: single
+    sequence:
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_entree_fin
+      data:
+        datetime: '2000-01-01 00:00:00'
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.chauffage_entree_mode
+      data:
+        option: Planning
+  chauffage_piece_8_appliquer:
+    alias: Pièce 8 - appliquer la consigne temporaire
+    mode: restart
+    sequence:
+    - condition: state
+      entity_id: input_boolean.chauffage_autorise
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_configuration_initialisee
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.chauffage_absent
+      state: 'off'
+    - condition: state
+      entity_id: input_select.chauffage_piece_8_mode
+      state: Planning
+    - condition: state
+      entity_id: input_boolean.chauffage_profils_initialises
+      state: 'on'
+    - condition: template
+      value_template: '{{ 5 <= states(''input_number.chauffage_piece_8_manuel'') | float(-1) <= 25 and 0.5 <= states(''input_number.chauffage_duree_manuelle'')
+        | float(-1) <= 12 }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.chauffage_piece_8_cible
+      data:
+        value: '{{ states(''input_number.chauffage_piece_8_manuel'') | float }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_piece_8_fin
+      data:
+        timestamp: '{{ as_timestamp(now()) + states(''input_number.chauffage_duree_manuelle'') | float * 3600 }}'
+  chauffage_piece_8_planning:
+    alias: Pièce 8 - reprendre le planning
+    mode: single
+    sequence:
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.chauffage_piece_8_fin
+      data:
+        datetime: '2000-01-01 00:00:00'
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.chauffage_piece_8_mode
+      data:
+        option: Planning
+automation:
+- id: chauffage_mode_salon
+  alias: 'Salon - mode choisi : annuler la dérogation'
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_select.chauffage_salon_mode
+    not_from:
+    - unknown
+    - unavailable
+    not_to:
+    - unknown
+    - unavailable
+  action:
+  - service: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.chauffage_salon_fin
+    data:
+      datetime: '2000-01-01 00:00:00'
+- id: chauffage_mode_cuisine
+  alias: 'Cuisine - mode choisi : annuler la dérogation'
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_select.chauffage_cuisine_mode
+    not_from:
+    - unknown
+    - unavailable
+    not_to:
+    - unknown
+    - unavailable
+  action:
+  - service: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.chauffage_cuisine_fin
+    data:
+      datetime: '2000-01-01 00:00:00'
+- id: chauffage_mode_chambre_1
+  alias: 'Chambre 1 - mode choisi : annuler la dérogation'
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_select.chauffage_chambre_1_mode
+    not_from:
+    - unknown
+    - unavailable
+    not_to:
+    - unknown
+    - unavailable
+  action:
+  - service: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.chauffage_chambre_1_fin
+    data:
+      datetime: '2000-01-01 00:00:00'
+- id: chauffage_mode_chambre_2
+  alias: 'Chambre 2 - mode choisi : annuler la dérogation'
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_select.chauffage_chambre_2_mode
+    not_from:
+    - unknown
+    - unavailable
+    not_to:
+    - unknown
+    - unavailable
+  action:
+  - service: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.chauffage_chambre_2_fin
+    data:
+      datetime: '2000-01-01 00:00:00'
+- id: chauffage_mode_chambre_3
+  alias: 'Chambre 3 - mode choisi : annuler la dérogation'
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_select.chauffage_chambre_3_mode
+    not_from:
+    - unknown
+    - unavailable
+    not_to:
+    - unknown
+    - unavailable
+  action:
+  - service: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.chauffage_chambre_3_fin
+    data:
+      datetime: '2000-01-01 00:00:00'
+- id: chauffage_mode_bureau
+  alias: 'Bureau - mode choisi : annuler la dérogation'
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_select.chauffage_bureau_mode
+    not_from:
+    - unknown
+    - unavailable
+    not_to:
+    - unknown
+    - unavailable
+  action:
+  - service: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.chauffage_bureau_fin
+    data:
+      datetime: '2000-01-01 00:00:00'
+- id: chauffage_mode_entree
+  alias: 'Entrée - mode choisi : annuler la dérogation'
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_select.chauffage_entree_mode
+    not_from:
+    - unknown
+    - unavailable
+    not_to:
+    - unknown
+    - unavailable
+  action:
+  - service: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.chauffage_entree_fin
+    data:
+      datetime: '2000-01-01 00:00:00'
+- id: chauffage_mode_piece_8
+  alias: 'Pièce 8 - mode choisi : annuler la dérogation'
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_select.chauffage_piece_8_mode
+    not_from:
+    - unknown
+    - unavailable
+    not_to:
+    - unknown
+    - unavailable
+  action:
+  - service: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.chauffage_piece_8_fin
+    data:
+      datetime: '2000-01-01 00:00:00'
+- id: chauffage_changement_planning
+  alias: 'Chauffage - nouveau planning : annuler les dérogations'
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_select.chauffage_planning
+    not_from:
+    - unknown
+    - unavailable
+    not_to:
+    - unknown
+    - unavailable
+  action:
+  - *id001
+- id: chauffage_changement_absence
+  alias: 'Chauffage - changement absence : annuler les dérogations'
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_boolean.chauffage_absent
+    from: 'off'
+    to: 'on'
+  - platform: state
+    entity_id: input_boolean.chauffage_absent
+    from: 'on'
+    to: 'off'
+  action:
+  - *id001
+- id: chauffage_application_planning
+  alias: Chauffage - planning, absence et dérogations
+  mode: single
+  max_exceeded: silent
+  trigger:
+  - platform: state
+    entity_id:
+    - input_boolean.chauffage_autorise
+    - input_boolean.chauffage_configuration_initialisee
+    - input_boolean.chauffage_profils_initialises
+    - input_boolean.chauffage_absent
+    - input_select.chauffage_planning
+    - schedule.chauffage_habituel
+    - schedule.chauffage_teletravail
+    - schedule.chauffage_vacances_maison
+    - input_number.chauffage_salon_confort
+    - input_number.chauffage_salon_eco
+    - input_number.chauffage_salon_nuit
+    - input_number.chauffage_salon_absent
+    - input_number.chauffage_salon_cible
+    - input_number.chauffage_cuisine_confort
+    - input_number.chauffage_cuisine_eco
+    - input_number.chauffage_cuisine_nuit
+    - input_number.chauffage_cuisine_absent
+    - input_number.chauffage_cuisine_cible
+    - input_number.chauffage_chambre_1_confort
+    - input_number.chauffage_chambre_1_eco
+    - input_number.chauffage_chambre_1_nuit
+    - input_number.chauffage_chambre_1_absent
+    - input_number.chauffage_chambre_1_cible
+    - input_number.chauffage_chambre_2_confort
+    - input_number.chauffage_chambre_2_eco
+    - input_number.chauffage_chambre_2_nuit
+    - input_number.chauffage_chambre_2_absent
+    - input_number.chauffage_chambre_2_cible
+    - input_number.chauffage_chambre_3_confort
+    - input_number.chauffage_chambre_3_eco
+    - input_number.chauffage_chambre_3_nuit
+    - input_number.chauffage_chambre_3_absent
+    - input_number.chauffage_chambre_3_cible
+    - input_number.chauffage_bureau_confort
+    - input_number.chauffage_bureau_eco
+    - input_number.chauffage_bureau_nuit
+    - input_number.chauffage_bureau_absent
+    - input_number.chauffage_bureau_cible
+    - input_number.chauffage_entree_confort
+    - input_number.chauffage_entree_eco
+    - input_number.chauffage_entree_nuit
+    - input_number.chauffage_entree_absent
+    - input_number.chauffage_entree_cible
+    - input_number.chauffage_piece_8_confort
+    - input_number.chauffage_piece_8_eco
+    - input_number.chauffage_piece_8_nuit
+    - input_number.chauffage_piece_8_absent
+    - input_number.chauffage_piece_8_cible
+    - input_select.chauffage_salon_mode
+    - input_select.chauffage_cuisine_mode
+    - input_select.chauffage_chambre_1_mode
+    - input_select.chauffage_chambre_2_mode
+    - input_select.chauffage_chambre_3_mode
+    - input_select.chauffage_bureau_mode
+    - input_select.chauffage_entree_mode
+    - input_select.chauffage_piece_8_mode
+    - input_datetime.chauffage_salon_fin
+    - input_datetime.chauffage_cuisine_fin
+    - input_datetime.chauffage_chambre_1_fin
+    - input_datetime.chauffage_chambre_2_fin
+    - input_datetime.chauffage_chambre_3_fin
+    - input_datetime.chauffage_bureau_fin
+    - input_datetime.chauffage_entree_fin
+    - input_datetime.chauffage_piece_8_fin
+  - platform: homeassistant
+    event: start
+  - platform: time_pattern
+    seconds: /15
+  condition:
+  - condition: state
+    entity_id: input_boolean.chauffage_autorise
+    state: 'on'
+  - condition: state
+    entity_id: input_boolean.chauffage_configuration_initialisee
+    state: 'on'
+  - condition: state
+    entity_id: input_boolean.chauffage_profils_initialises
+    state: 'on'
+  - condition: template
+    value_template: '{{ states(''input_boolean.chauffage_absent'') in [''on'',''off''] }}'
+  action:
+  - variables:
+      valve_map:
+        salon: climate.trv_salon
+        cuisine: climate.trv_cuisine
+        chambre_1: climate.trv_chambre_1
+        chambre_2: climate.trv_chambre_2
+        chambre_3: climate.trv_chambre_3
+        bureau: climate.trv_bureau
+        entree: climate.trv_entree
+        piece_8: climate.trv_piece_8
+      planning_map:
+        Habituel: schedule.chauffage_habituel
+        Télétravail: schedule.chauffage_teletravail
+        Vacances à la maison: schedule.chauffage_vacances_maison
+      planning: '{{ planning_map.get(states(''input_select.chauffage_planning''), '''') }}'
+      absent: '{{ is_state(''input_boolean.chauffage_absent'', ''on'') }}'
+      tick: '{{ as_timestamp(now()) }}'
+  - repeat:
+      for_each:
+      - salon
+      - cuisine
+      - chambre_1
+      - chambre_2
+      - chambre_3
+      - bureau
+      - entree
+      - piece_8
+      sequence:
+      - variables:
+          vanne: '{{ valve_map[repeat.item] }}'
+          consigne: "{% set modes = {'Confort':'confort', 'Éco':'eco', 'Nuit':'nuit', 'Absent':'absent'} %}\n{%\
+            \ set mode = states('input_select.chauffage_' ~ repeat.item ~ '_mode') %}\n{% if absent %}\n  {{ states('input_number.chauffage_'\
+            \ ~ repeat.item ~ '_absent') | float(-1) }}\n{% elif mode in modes %}\n  {{ states('input_number.chauffage_'\
+            \ ~ repeat.item ~ '_' ~ modes[mode]) | float(-1) }}\n{% elif mode != 'Planning' %} -1\n{% elif as_timestamp(states('input_datetime.chauffage_'\
+            \ ~ repeat.item ~ '_fin'), 0) > tick | float %}\n  {{ states('input_number.chauffage_' ~ repeat.item\
+            \ ~ '_cible') | float(-1) }}\n{% elif is_state(planning, 'on') %}\n  {% set profil = state_attr(planning,\
+            \ 'profil') | default('confort', true) %}\n  {{ states('input_number.chauffage_' ~ repeat.item ~ '_'\
+            \ ~ profil) | float(-1) if profil in ['confort','eco','nuit','absent'] else -1 }}\n{% elif is_state(planning,\
+            \ 'off') %}\n  {{ states('input_number.chauffage_' ~ repeat.item ~ '_eco') | float(-1) }}\n{% else %}\
+            \ -1 {% endif %}"
+      - if:
+        - condition: template
+          value_template: '{{ states(vanne) not in [''unknown'',''unavailable''] and 5 <= consigne | float(-1) <=
+            25 }}'
+        then:
+        - if:
+          - condition: template
+            value_template: '{{ not is_state(vanne, ''heat'') }}'
+          then:
+          - service: climate.set_hvac_mode
+            target:
+              entity_id: '{{ vanne }}'
+            data:
+              hvac_mode: heat
+            continue_on_error: true
+        - if:
+          - condition: template
+            value_template: '{{ state_attr(vanne, ''temperature'') | float(-1) != consigne | float }}'
+          then:
+          - service: climate.set_temperature
+            target:
+              entity_id: '{{ vanne }}'
+            data:
+              temperature: '{{ consigne }}'
+            continue_on_error: true

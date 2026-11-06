@@ -1,0 +1,38 @@
+# EXEMPLE À FUSIONNER AVEC VOTRE CONFIGURATION, PAS UN BLUEPRINT.
+# Ne pas dupliquer des clés input_boolean / input_text / automation existantes.
+# Autre possibilité : créer les deux assistants et l'automatisation depuis l'UI.
+input_boolean:
+  chauffage_autorise:
+    name: Chauffage autorisé
+    icon: mdi:radiator
+    # Sans initial : état restauré au redémarrage. Désactivé lors de la première création.
+
+input_text:
+  chauffage_memoire:
+    name: Mémoire coordination chauffage
+    max: 255
+    # Pas de initial : conservation de la mémoire entre redémarrages.
+
+automation:
+  - id: chauffage_trv_chaudiere
+    alias: Chauffage - coordination des huit vannes
+    use_blueprint:
+      path: local/chauffage-trv-blueprint.yaml
+      input:
+        valves:
+          - climate.trv_salon
+          - climate.trv_cuisine
+          - climate.trv_chambre_1
+          - climate.trv_chambre_2
+          - climate.trv_chambre_3
+          - climate.trv_bureau
+          - climate.trv_entree
+          - climate.trv_piece_8
+        relay: switch.relais_chaudiere
+        enable: input_boolean.chauffage_autorise
+        memory: input_text.chauffage_memoire
+        confirm_seconds: 30
+        stop_seconds: 30
+        minimum_off: 180
+        last_seen_map: {}
+        freshness_minutes: 120

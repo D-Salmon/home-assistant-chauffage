@@ -1,0 +1,237 @@
+blueprint:
+  name: "Chaudière - coordination des TRV Zigbee2MQTT"
+  description: >-
+    TRV régulées localement (PID possible), relais ON = demande de chauffe.
+    Lit hvac_action=heating. Confirmation de demande, délai d'arrêt,
+    délai minimal OFF, reprise et contrôle toutes les 15 secondes.
+    Créer un input_boolean d'autorisation et un input_text de 255 caractères
+    dédié à cette seule instance. Voir le guide joint avant activation.
+    Ne fournit pas d'arrêt autonome du relais en cas de panne de HA.
+  domain: automation
+  input:
+    valves:
+      name: Vannes thermostatiques
+      selector:
+        entity:
+          filter:
+            - domain: climate
+          multiple: true
+    relay:
+      name: Relais chaudière (ON = chauffe autorisée)
+      selector:
+        entity:
+          filter:
+            - domain: switch
+    enable:
+      name: Autorisation générale de chauffage
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+    memory:
+      name: Mémoire dédiée (input_text, longueur maximale 255)
+      selector:
+        entity:
+          filter:
+            - domain: input_text
+    confirm_seconds:
+      name: Confirmation de la demande (secondes)
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 600
+          step: 15
+          unit_of_measurement: s
+          mode: box
+    stop_seconds:
+      name: Absence de demande avant arrêt (secondes)
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 300
+          step: 15
+          unit_of_measurement: s
+          mode: box
+    minimum_off:
+      name: Durée minimale entre arrêt et nouvelle demande (secondes)
+      description: Valeur initiale à adapter à la chaudière. Ne compte pas ses cycles internes de brûleur.
+      default: 180
+      selector:
+        number:
+          min: 0
+          max: 1800
+          step: 15
+          unit_of_measurement: s
+          mode: box
+    last_seen_map:
+      name: Surveillance de fraîcheur (optionnelle)
+      description: "Dictionnaire climate.xxx: sensor.xxx_last_seen. Capteurs ISO 8601 Zigbee2MQTT. Laisser {} pour désactiver. Si renseigné, fournir les huit correspondances."
+      default: {}
+      selector:
+        object: {}
+    freshness_minutes:
+      name: Âge maximal du dernier message (minutes)
+      description: Appliqué uniquement avec le dictionnaire ci-dessus. À ajuster après observation des remontées réelles.
+      default: 120
+      selector:
+        number:
+          min: 5
+          max: 1500
+          step: 5
+          mode: box
+          unit_of_measurement: min
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input valves
+  - platform: state
+    entity_id: !input relay
+  - platform: state
+    entity_id: !input enable
+  - platform: homeassistant
+    event: start
+    id: startup
+  - platform: event
+    event_type: automation_reloaded
+    id: reload
+  - platform: time_pattern
+    seconds: "/15"
+    id: poll
+
+action:
+  - variables:
+      v: !input valves
+      r: !input relay
+      en: !input enable
+      mem: !input memory
+      confirm_s: !input confirm_seconds
+      stop_s: !input stop_seconds
+      min_off_s: !input minimum_off
+      freshness_map: !input last_seen_map
+      fresh_min: !input freshness_minutes
+  - variables:
+      tick: "{{ as_timestamp(now()) | int }}"
+      old_raw: "{{ states(mem)[3:] | from_json({}) if states(mem).startswith('v1:') else {} }}"
+      actual: "{{ states(r) }}"
+      reboot: "{{ trigger is defined and trigger.id in ['startup', 'reload'] }}"
+      notice: "{{ 'chauffage_' ~ this.entity_id | replace('.', '_') }}"
+      scan: >-
+        {% set ns = namespace(heat=[], bad=[]) %}
+        {% for e in v %}
+          {% set a = state_attr(e, 'hvac_action') %}
+          {% set stamp = as_timestamp(states(freshness_map.get(e, 'sensor.absent')), 0)
+              if freshness_map else 0 %}
+          {% set fresh = not freshness_map or
+              (stamp > 0 and -60 <= as_timestamp(now()) - stamp <= (fresh_min | float) * 60) %}
+          {% if states(e) in ['unknown', 'unavailable'] or
+                a not in ['heating', 'idle', 'off'] or not fresh %}
+            {% set ns.bad = ns.bad + [e] %}
+          {% elif a == 'heating' %}
+            {% set ns.heat = ns.heat + [e] %}
+          {% endif %}
+        {% endfor %}
+        {{ {'heat': ns.heat, 'bad': ns.bad} }}
+  - variables:
+      old: "{{ old_raw if old_raw is mapping else {} }}"
+      wanted: "{{ is_state(en, 'on') and scan.heat | count > 0 }}"
+      force_off: "{{ not is_state(en, 'on') or v | count == 0 or (scan.heat | count == 0 and scan.bad | count > 0) }}"
+  - variables:
+      since: >-
+        {{ tick if reboot or old.get('d') != wanted
+           else [tick, old.get('t', tick) | int(tick)] | min }}
+      off_since: >-
+        {% if actual != 'on' and (reboot or old.get('r') != actual) %}
+          {{ tick }}
+        {% else %}
+          {{ [tick, old.get('o', tick) | int(tick)] | min }}
+        {% endif %}
+  - variables:
+      target: >-
+        {% if force_off or actual not in ['on', 'off'] %}
+          off
+        {% elif wanted %}
+          {{ 'on' if actual == 'on' or
+             ((tick | int) - (since | int) >= (confirm_s | int) and
+              (tick | int) - (off_since | int) >= (min_off_s | int)) else 'off' }}
+        {% else %}
+          {{ 'off' if (tick | int) - (since | int) >= (stop_s | int) else actual }}
+        {% endif %}
+      fault_count: "{{ scan.bad | count }}"
+  - variables:
+      attempts: >-
+        {{ 0 if reboot or actual == target or old.get('g') != target or
+             (old.get('r') in ['unknown', 'unavailable'] and actual in ['on', 'off'])
+           else old.get('n', 0) | int(0) }}
+      last_attempt: "{{ old.get('a', 0) | int(0) }}"
+  - variables:
+      send: >-
+        {{ actual != target and (attempts | int) < 3 and
+           (reboot or old.get('g') != target or
+            (tick | int) - (last_attempt | int) >= 15) }}
+      next_memory: >-
+        {{ 'v1:' ~ ({'d': wanted, 't': since | int, 'o': off_since | int, 'r': actual,
+            'g': target, 'n': (attempts | int) + (1 if send else 0),
+            'a': (tick | int) if send else (last_attempt | int), 'f': fault_count | int}
+           | to_json) }}
+  # Stocker la décision AVANT l'envoi ; pas de delay qui bloque l'exécution.
+  - if:
+      - condition: template
+        value_template: "{{ states(mem) != next_memory }}"
+    then:
+      - service: input_text.set_value
+        target:
+          entity_id: "{{ mem }}"
+        data:
+          value: "{{ next_memory }}"
+  - if:
+      - condition: template
+        value_template: "{{ send }}"
+    then:
+      - service: "{{ 'switch.turn_on' if target == 'on' else 'switch.turn_off' }}"
+        continue_on_error: true
+        target:
+          entity_id: "{{ r }}"
+  - if:
+      - condition: template
+        value_template: "{{ fault_count | int > 0 and (reboot or old.get('f', -1) != fault_count) }}"
+    then:
+      - service: persistent_notification.create
+        data:
+          notification_id: "{{ notice ~ '_vannes' }}"
+          title: "Chauffage : données de vanne manquantes"
+          message: >-
+            Vannes exclues du calcul : {{ scan.bad | join(', ') }}.
+            Les autres demandes valides restent prises en compte.
+            Sans demande valide, le relais est demandé à OFF.
+  - if:
+      - condition: template
+        value_template: "{{ fault_count | int == 0 and old.get('f', 0) | int > 0 }}"
+    then:
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: "{{ notice ~ '_vannes' }}"
+  - if:
+      - condition: template
+        value_template: "{{ actual != target and attempts | int >= 3 and tick | int - last_attempt | int >= 15 }}"
+    then:
+      - service: persistent_notification.create
+        data:
+          notification_id: "{{ notice ~ '_relais' }}"
+          title: "Chauffage : relais non confirmé"
+          message: >-
+            {{ r }} devrait être {{ target }}, mais HA indique {{ actual }}.
+            Trois commandes ont été tentées. Vérifier Zigbee2MQTT et le module.
+            Après correction, recharger les automatisations pour relancer les tentatives.
+    else:
+      - if:
+          - condition: template
+            value_template: "{{ actual == target }}"
+        then:
+          - service: persistent_notification.dismiss
+            data:
+              notification_id: "{{ notice ~ '_relais' }}"
