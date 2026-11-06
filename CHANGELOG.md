@@ -1,5 +1,10 @@
 # Historique
 
+## 3.2.5 — 6 novembre 2026
+
+- Renomme le délai de surveillance en « depuis la dernière communication avec la vanne ».
+
+
 ## 3.2.4 — 6 novembre 2026
 
 - Accepte les horaires saisis avec l’heure seule, par exemple `7`, et les normalise en `07:00`.
