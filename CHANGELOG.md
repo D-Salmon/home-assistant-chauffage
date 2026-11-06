@@ -1,5 +1,10 @@
 # Historique
 
+## 3.2.8 — 6 novembre 2026
+
+- Force le rechargement des modules de carte à chaque version pour éviter qu’un navigateur conserve une ancienne carte après mise à jour.
+
+
 ## 3.2.7 — 6 novembre 2026
 
 - Ajoute un nom de maison configurable dans les options de l’intégration.
