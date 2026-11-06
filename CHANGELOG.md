@@ -1,5 +1,10 @@
 # Historique
 
+## 3.2.9 — 6 novembre 2026
+
+- Ajoute une nouvelle adresse de chargeur Lovelace pour contourner sûrement le cache persistant du navigateur. La ressource se remplace une seule fois ; le chemin reste ensuite stable.
+
+
 ## 3.2.8 — 6 novembre 2026
 
 - Force le rechargement des modules de carte à chaque version pour éviter qu’un navigateur conserve une ancienne carte après mise à jour.

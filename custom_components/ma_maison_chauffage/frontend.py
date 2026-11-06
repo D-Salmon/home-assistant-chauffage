@@ -4,7 +4,7 @@ from pathlib import Path
 from homeassistant.components.http import StaticPathConfig
 
 BASE_URL = "/ma-maison-chauffage-assets"
-MODULE_URL = f"{BASE_URL}/bootstrap.js"
+MODULE_URL = f"{BASE_URL}/bootstrap-v3.js"
 DATA_KEY = "ma_maison_chauffage_frontend"
 
 
