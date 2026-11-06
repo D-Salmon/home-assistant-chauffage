@@ -37,7 +37,6 @@ async def async_setup_entry(hass, entry):
 
 
 async def async_unload_entry(hass, entry):
-    from .frontend import async_unload_frontend
     runtime = hass.data[DOMAIN]
     # Stop requesting heat before an intentional unload. Failure refuses unload.
     if not await runtime.stop():
@@ -47,7 +46,6 @@ async def async_unload_entry(hass, entry):
         await runtime.start()
         return False
     hass.services.async_remove(DOMAIN, "command")
-    async_unload_frontend(hass)
     hass.data.pop(DOMAIN, None)
     return True
 
