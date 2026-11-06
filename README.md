@@ -1,6 +1,6 @@
 # Ma maison — Chauffage Home Assistant
 
-**Version 3.2.0 : anticipation adaptative de chauffe et d’arrêt, apprentissage individuel par pièce et pause sur capteur/interrupteur.**
+**Version 3.2.1 : anticipation adaptative, pause par pièce, icône de marque et URL permanente pour la carte Lovelace.**
 
 Une intégration locale conserve une seule liste de pièces pour l’affichage, les consignes et la coordination chaudière. Le nombre de vannes n’est plus fixé à huit. Interface mobile inspirée de Home + Control pour des TRV Zigbee2MQTT et un relais chaudière à contact sec.
 
@@ -25,7 +25,7 @@ Sur Home Assistant **2025.7 ou ultérieur**, avec HACS installé :
 
 1. [Ouvrir le dépôt dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=D-Salmon&repository=home-assistant-chauffage&category=integration), puis télécharger **Ma maison - Chauffage**. Autre chemin : HACS → Dépôts personnalisés → URL de ce dépôt → type Intégration.
 2. Redémarrer HA, puis ajouter l’intégration **Ma maison - Chauffage** dans Appareils et services.
-3. Dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, ajouter `/ma-maison-chauffage-assets/bootstrap.js?v=3.2.0` comme **Module JavaScript**.
+3. Dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, ajouter `/ma-maison-chauffage-assets/bootstrap.js` comme **Module JavaScript**. Cette URL ne change plus lors des mises à jour.
 4. Recharger la page et ajouter la carte. Si elle n’est pas listée, choisir **Manuel** et saisir `type: custom:ma-maison-chauffage-card`. Choisir ensuite le relais, les plannings et les vannes.
 
 Les deux cartes sont téléchargées avec l’intégration. La ressource JavaScript doit être déclarée une fois dans le tableau de bord ; aucun fichier n’est à copier. Button Card et les anciens packages ne sont pas nécessaires. Les commandes nécessitent un compte administrateur HA dans cette version.

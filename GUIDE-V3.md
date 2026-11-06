@@ -2,14 +2,14 @@
 
 L’intégration locale **Ma maison - Chauffage** conserve une seule liste de pièces, utilisée par l’affichage, les consignes et la commande chaudière. Ajouter, renommer ou retirer une vanne ne nécessite plus de YAML, d’assistants supplémentaires ni de redémarrage HA.
 
-## Installation avec HACS — version 3.2.0
+## Installation avec HACS — version 3.2.1
 
 Prérequis : Home Assistant **2025.7 ou ultérieur**, HACS installé et configuré, compte administrateur HA. Sur Home Assistant OS, si HACS n’est pas encore présent, suivre son [installation officielle, onglet OS/Supervised](https://www.hacs.dev/docs/use/download/download/), puis sa [configuration initiale](https://www.hacs.dev/docs/use/configuration/basic/).
 
 1. [Ouvrir ce dépôt dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=D-Salmon&repository=home-assistant-chauffage&category=integration). Si nécessaire, renseigner l’adresse de votre Home Assistant. Autre chemin : **HACS → ⋮ → Dépôts personnalisés**, URL `https://github.com/D-Salmon/home-assistant-chauffage`, type **Intégration**, puis Ajouter.
-2. Ouvrir **Ma maison - Chauffage** dans HACS et télécharger la version **3.2.0** ou une version ultérieure. Le dépôt est ajouté comme dépôt personnalisé ; il n’est pas dans le catalogue par défaut.
+2. Ouvrir **Ma maison - Chauffage** dans HACS et télécharger la version **3.2.1** ou une version ultérieure. Le dépôt est ajouté comme dépôt personnalisé ; il n’est pas dans le catalogue par défaut.
 3. **Redémarrer Home Assistant**. Ouvrir **Paramètres → Appareils et services → Ajouter une intégration → Ma maison - Chauffage**. Une seule maison est prise en charge ; le chauffage démarre désactivé.
-4. Ajouter la ressource JavaScript : aller dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, cliquer sur **Ajouter une ressource**, entrer `/ma-maison-chauffage-assets/bootstrap.js?v=3.2.0` et sélectionner **Module JavaScript**. L’intégration fournit cette ressource ; aucun fichier n’est à copier.
+4. Ajouter la ressource JavaScript : aller dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, cliquer sur **Ajouter une ressource**, entrer `/ma-maison-chauffage-assets/bootstrap.js` et sélectionner **Module JavaScript**. Garder cette URL sans paramètre de version ; elle restera identique aux prochaines mises à jour.
 5. Recharger complètement le navigateur. Modifier un tableau de bord, choisir **Ajouter une carte → Manuel**, puis saisir `type: custom:ma-maison-chauffage-card`. La carte peut aussi apparaître dans la liste après l’ajout de la ressource.
 6. Créer les assistants **Planning** souhaités dans **Paramètres → Appareils et services → Entrées → Créer une entrée → Planning** (le libellé peut être « Assistants » selon la traduction). Par exemple : Habituel et Vacances. Un programme contient une semaine complète, avec des horaires différentes en semaine et le week-end.
 7. Dans **Réglages** de la carte, choisir le relais chaudière et ces assistants Planning. Enregistrer en laissant **Chauffage autorisé** décoché.
@@ -26,7 +26,9 @@ Sans HACS, télécharger la version publiée et copier uniquement son dossier `c
 
 ### Mises à jour
 
-Télécharger la mise à jour dans HACS, redémarrer HA, puis recharger le navigateur ou l’application compagnon. Les pièces, températures et réglages restent dans le stockage HA. Conserver la ressource déjà ajoutée ; ne pas en créer de doublon.
+Télécharger la mise à jour dans HACS, redémarrer HA, puis recharger le navigateur ou l’application compagnon. Les pièces, températures et réglages restent dans le stockage HA. Conserver la ressource déjà ajoutée ; ne pas en créer de doublon. Si elle contient encore `?v=3.1.2` ou `?v=3.2.0`, la remplacer une dernière fois par `/ma-maison-chauffage-assets/bootstrap.js`. Les prochaines mises à jour ne nécessiteront plus de modifier cette URL.
+
+À partir de Home Assistant 2026.3, l’intégration fournit également sa propre icône de marque dans la fiche **Appareils et services**. L’aperçu du Marketplace pour un dépôt personnalisé hors catalogue peut continuer à afficher l’icône générique ; cet aperçu est géré par le catalogue de marques, séparément des fichiers installés localement.
 
 Pour une ancienne installation **3.0 uniquement**, retirer les deux anciennes ressources `/local/ma-maison-chauffage-card.js` et `/local/chauffage-planning-card.js` des ressources du tableau de bord et les remplacer par l’URL bootstrap ci-dessus. **Pour une première installation, aucune migration n’est nécessaire.**
 

@@ -1,5 +1,11 @@
 # Historique
 
+## 3.2.1 — 6 novembre 2026
+
+- URL Lovelace stable sans numéro de version ; les fichiers de cartes ne reçoivent plus le cache d’un mois après redémarrage HA.
+- Le guide demande de remplacer une ancienne ressource versionnée une dernière fois, puis la ressource restera permanente.
+- Ajout de l’icône de l’intégration dans ses fichiers de marque Home Assistant, aux formats 256 et 512 pixels.
+
 ## 3.2.0 — 6 novembre 2026
 
 - Apprentissage glissant individuel par pièce des vitesses de chauffe et de refroidissement, conservé lorsque le chauffage est désactivé.

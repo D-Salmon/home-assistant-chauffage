@@ -3,9 +3,8 @@ from pathlib import Path
 
 from homeassistant.components.http import StaticPathConfig
 
-VERSION = "3.2.0"
 BASE_URL = "/ma-maison-chauffage-assets"
-MODULE_URL = f"{BASE_URL}/bootstrap.js?v={VERSION}"
+MODULE_URL = f"{BASE_URL}/bootstrap.js"
 DATA_KEY = "ma_maison_chauffage_frontend"
 
 
@@ -13,6 +12,7 @@ async def async_setup_frontend(hass):
     state = hass.data.setdefault(DATA_KEY, {"registered": False, "loaded": False})
     if not state["registered"]:
         await hass.http.async_register_static_paths([
-            StaticPathConfig(BASE_URL, str(Path(__file__).parent / "assets"), True)
+            # Avoid the one-month cache header so a permanent Lovelace URL can serve updated modules.
+            StaticPathConfig(BASE_URL, str(Path(__file__).parent / "assets"), False)
         ])
         state["registered"] = True
