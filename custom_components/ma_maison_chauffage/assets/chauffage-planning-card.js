@@ -9,11 +9,12 @@
   const clone = x => JSON.parse(JSON.stringify(x));
   const esc = x => String(x ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const stable = x => JSON.stringify(x, function(k,v){return v && typeof v==='object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))) : v;});
+  const formatTime = n => String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
   function minutes(value, end=false) {
-    const m=String(value).match(/^(\d{2}):(\d{2})(?::00)?$/);
-    if(!m)throw new Error('Utilisez des heures au format HH:MM, sans secondes.');
-    const n=Number(m[1])*60+Number(m[2]);
-    if(+m[2]>59 || +m[1]>24 || n>1440 || (!end && n===1440))throw new Error('Heure invalide. 24:00 est uniquement une fin de plage.');
+    const m=String(value).trim().match(/^(\d{1,2})(?::(\d{1,2}))?(?::00)?$/);
+    if(!m)throw new Error('Saisissez une heure comme 7, 7:30 ou 07:00.');
+    const hour=Number(m[1]),minute=Number(m[2]??0),n=hour*60+minute;
+    if(minute>59 || hour>24 || n>1440 || (!end && n===1440))throw new Error('Heure invalide. 24:00 est uniquement une fin de plage.');
     return n;
   }
   function validate(schedule) {
@@ -28,7 +29,7 @@
         if(from<last)throw new Error('Deux plages se chevauchent : '+LABELS[DAYS.indexOf(day)]+'.');
         if(!Object.hasOwn(PROFILES,b.data?.profil ?? 'confort'))throw new Error('Choisissez un profil valide pour chaque plage.');
         last=to;
-        b.from=b.from.slice(0,5)+':00';b.to=b.to.slice(0,5)+':00';
+        b.from=formatTime(from);b.to=formatTime(to);
         b.data={...b.data,profil:b.data?.profil ?? 'confort'};
       }
       copy[day]=blocks;
@@ -71,8 +72,7 @@
     add(){
       const b=this.draft[this.day];let from=12*60;
       try {from=b.length?Math.min(1380,minutes(b[b.length-1].to,true)):360;}catch{}
-      const fmt=n=>String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
-      b.push({from:fmt(from),to:fmt(Math.min(1440,from+60)),data:{profil:'confort'}});this.dirty=true;this.render();
+      b.push({from:formatTime(from),to:formatTime(Math.min(1440,from+60)),data:{profil:'confort'}});this.dirty=true;this.render();
     }
     refreshTimeline(){
       const line=this.shadowRoot.querySelector('.timeline');if(!line)return;line.replaceChildren();
@@ -93,7 +93,7 @@
         <label for="plan">Planning à modifier</label><select id="plan" ${disabled}>${this.config.schedules.map((s,i)=>`<option value="${i}" ${i===this.index?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
         <div class="days" aria-label="Jour">${DAYS.map((d,i)=>`<button type="button" data-day="${d}" ${disabled} aria-label="${LABELS[i]}" aria-pressed="${this.day===d}">${LABELS[i].slice(0,3)}</button>`).join('')}</div>
         ${this.draft?`<strong>${LABELS[DAYS.indexOf(this.day)]}</strong><div class="scale"><span>00h</span><span>12h</span><span>24h</span></div><div class="timeline" aria-hidden="true">${blocks.map(b=>{try{const f=minutes(b.from),t=minutes(b.to,true),p=b.data?.profil??'confort';return t>f&&Object.hasOwn(PROFILES,p)?`<span class="segment ${p}" style="left:${f/14.4}%;width:${(t-f)/14.4}%"></span>`:'';}catch{return '';}}).join('')}</div>
-        ${blocks.map((b,i)=>`<div class="block"><div class="hours"><div><label for="from-${i}">Début</label><input id="from-${i}" data-i="${i}" data-field="from" value="${esc(b.from.replace(/:00$/,'').length===5?b.from.slice(0,5):b.from)}" placeholder="06:30" ${disabled}></div><div><label for="to-${i}">Fin (24:00 possible)</label><input id="to-${i}" data-i="${i}" data-field="to" value="${esc(b.to.length===8?b.to.slice(0,5):b.to)}" placeholder="08:30" ${disabled}></div></div><div class="profile"><div><label for="profil-${i}">Température à utiliser</label><select id="profil-${i}" data-i="${i}" data-field="profil" ${disabled}>${!Object.hasOwn(PROFILES,b.data?.profil??'confort')?'<option selected value="invalide">Profil inconnu</option>':''}${Object.entries(PROFILES).map(([v,label])=>`<option value="${v}" ${(b.data?.profil??'confort')===v?'selected':''}>${label}</option>`).join('')}</select></div><button type="button" data-delete="${i}" ${disabled} aria-label="Supprimer la plage ${i+1}">Supprimer</button></div></div>`).join('')}
+        ${blocks.map((b,i)=>`<div class="block"><div class="hours"><div><label for="from-${i}">Début</label><input id="from-${i}" data-i="${i}" data-field="from" value="${esc(b.from.replace(/:00$/,'').length===5?b.from.slice(0,5):b.from)}" placeholder="7 ou 07:00" ${disabled}></div><div><label for="to-${i}">Fin (24:00 possible)</label><input id="to-${i}" data-i="${i}" data-field="to" value="${esc(b.to.length===8?b.to.slice(0,5):b.to)}" placeholder="8 ou 08:00" ${disabled}></div></div><div class="profile"><div><label for="profil-${i}">Température à utiliser</label><select id="profil-${i}" data-i="${i}" data-field="profil" ${disabled}>${!Object.hasOwn(PROFILES,b.data?.profil??'confort')?'<option selected value="invalide">Profil inconnu</option>':''}${Object.entries(PROFILES).map(([v,label])=>`<option value="${v}" ${(b.data?.profil??'confort')===v?'selected':''}>${label}</option>`).join('')}</select></div><button type="button" data-delete="${i}" ${disabled} aria-label="Supprimer la plage ${i+1}">Supprimer</button></div></div>`).join('')}
         <div class="actions"><button type="button" id="add" ${disabled}>+ Ajouter une plage</button></div>
         <details><summary>Copier cette journée</summary><div class="copies">${DAYS.filter(d=>d!==this.day).map(d=>`<label><input type="checkbox" value="${d}" ${disabled}>${LABELS[DAYS.indexOf(d)].slice(0,3)}</label>`).join('')}</div><button type="button" id="copy" ${disabled}>Remplacer les jours cochés</button></details>
         <div class="actions"><button type="button" class="primary" id="save" ${disabled}>Enregistrer${this.dirty?' *':''}</button><button type="button" id="reload" ${disabled}>${this.dirty?'Annuler les modifications':'Recharger'}</button></div>`:`<div class="actions"><button type="button" id="reload" ${disabled}>Réessayer</button></div>`}
@@ -101,7 +101,7 @@
       const q=s=>this.shadowRoot.querySelector(s);
       q('#plan').onchange=e=>{if(this.dirty){e.target.value=this.index;this.message='Enregistrez ou annulez vos modifications avant de changer de planning.';this.render();return;}this.index=Number(e.target.value);this.load();};
       this.shadowRoot.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{this.day=b.dataset.day;this.render();});
-      this.shadowRoot.querySelectorAll('[data-field]').forEach(e=>e.onchange=()=>{const b=this.draft[this.day][Number(e.dataset.i)];if(e.dataset.field==='profil')b.data={...b.data,profil:e.value};else b[e.dataset.field]=e.value;this.dirty=true;this.refreshTimeline();});
+      this.shadowRoot.querySelectorAll('[data-field]').forEach(e=>e.onchange=()=>{const b=this.draft[this.day][Number(e.dataset.i)];if(e.dataset.field==='profil')b.data={...b.data,profil:e.value};else{b[e.dataset.field]=e.value;try{b[e.dataset.field]=formatTime(minutes(e.value,e.dataset.field==='to'));e.value=b[e.dataset.field];this.message='';}catch(error){this.message=error.message;}}this.dirty=true;this.refreshTimeline();const status=q('.status');if(status)status.textContent=this.message;});
       this.shadowRoot.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{this.draft[this.day].splice(Number(b.dataset.delete),1);this.dirty=true;this.render();});
       if(q('#add'))q('#add').onclick=()=>this.add();
       if(q('#save'))q('#save').onclick=()=>this.save();

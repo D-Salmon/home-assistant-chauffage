@@ -2,12 +2,12 @@
 
 L’intégration locale **Ma maison - Chauffage** conserve une seule liste de pièces, utilisée par l’affichage, les consignes et la commande chaudière. Ajouter, renommer ou retirer une vanne ne nécessite plus de YAML, d’assistants supplémentaires ni de redémarrage HA.
 
-## Installation avec HACS — version 3.2.3
+## Installation avec HACS — version 3.2.4
 
 Prérequis : Home Assistant **2025.7 ou ultérieur**, HACS installé et configuré, compte administrateur HA. Sur Home Assistant OS, si HACS n’est pas encore présent, suivre son [installation officielle, onglet OS/Supervised](https://www.hacs.dev/docs/use/download/download/), puis sa [configuration initiale](https://www.hacs.dev/docs/use/configuration/basic/).
 
 1. [Ouvrir ce dépôt dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=D-Salmon&repository=home-assistant-chauffage&category=integration). Si nécessaire, renseigner l’adresse de votre Home Assistant. Autre chemin : **HACS → ⋮ → Dépôts personnalisés**, URL `https://github.com/D-Salmon/home-assistant-chauffage`, type **Intégration**, puis Ajouter.
-2. Ouvrir **Ma maison - Chauffage** dans HACS et télécharger la version **3.2.3** ou une version ultérieure. Le dépôt est ajouté comme dépôt personnalisé ; il n’est pas dans le catalogue par défaut.
+2. Ouvrir **Ma maison - Chauffage** dans HACS et télécharger la version **3.2.4** ou une version ultérieure. Le dépôt est ajouté comme dépôt personnalisé ; il n’est pas dans le catalogue par défaut.
 3. **Redémarrer Home Assistant**. Ouvrir **Paramètres → Appareils et services → Ajouter une intégration → Ma maison - Chauffage**. Une seule maison est prise en charge ; le chauffage démarre désactivé.
 4. Ajouter la ressource JavaScript : aller dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, cliquer sur **Ajouter une ressource**, entrer `/ma-maison-chauffage-assets/bootstrap.js` et sélectionner **Module JavaScript**. Garder cette URL sans paramètre de version ; elle restera identique aux prochaines mises à jour.
 5. Recharger complètement le navigateur. Modifier un tableau de bord, choisir **Ajouter une carte → Manuel**, puis saisir `type: custom:ma-maison-chauffage-card`. La carte peut aussi apparaître dans la liste après l’ajout de la ressource.
@@ -66,7 +66,7 @@ Les changements directs sur la TRV ou dans son dialogue climate natif sont rempl
 
 Créer les assistants **Planning** dans les paramètres HA, puis sélectionner ceux à utiliser dans **Réglages** de la carte. Le nombre et les noms ne sont plus imposés.
 
-Dans **Plannings**, choisir le programme à éditer et le jour, ajouter des plages début/fin/profil, copier la journée vers les jours cochés si nécessaire, puis **Enregistrer**. Les chevauchements sont refusés. Couper une plage traversant minuit en deux : 22:00–24:00 et 00:00–06:30, par exemple.
+Dans **Plannings**, choisir le programme à éditer et le jour, ajouter des plages début/fin/profil, copier la journée vers les jours cochés si nécessaire, puis **Enregistrer**. Les heures acceptent `7`, `7:00` ou `07:00` et sont normalisées après saisie. `24:00` est accepté uniquement comme heure de fin. Les chevauchements sont refusés. Couper une plage traversant minuit en deux : 22:00–24:00 et 00:00–06:30, par exemple.
 
 L’édition ne change pas le programme **actif** sélectionné sur l’accueil. L’éditeur modifie les assistants créés dans l’interface HA, pas les plannings définis en YAML. Les programmes V2 sont réutilisables : les plages utilisent `profil`, et une plage sans cette donnée signifie Confort. L’éditeur renseigne cette donnée pour vous.
 

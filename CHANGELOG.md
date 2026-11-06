@@ -1,5 +1,10 @@
 # Historique
 
+## 3.2.4 — 6 novembre 2026
+
+- Accepte les horaires saisis avec l’heure seule, par exemple `7`, et les normalise en `07:00`.
+- Affiche des exemples de saisie dans les champs Début et Fin des plages.
+
 ## 3.2.3 — 6 novembre 2026
 
 - Renomme le réglage du dernier contact pour préciser qu’il s’agit de la dernière communication de la vanne.
