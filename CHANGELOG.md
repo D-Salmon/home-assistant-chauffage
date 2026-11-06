@@ -1,5 +1,11 @@
 # Historique
 
+## 3.2.7 — 6 novembre 2026
+
+- Ajoute un nom de maison configurable dans les options de l’intégration.
+- Affiche le nombre de vannes en demande et anime l’icône des pièces qui chauffent.
+
+
 ## 3.2.6 — 6 novembre 2026
 
 - Renomme « Repos minimal du relais » en « Délai minimal avant relance du chauffage ».

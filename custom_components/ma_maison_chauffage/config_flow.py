@@ -1,5 +1,7 @@
 """One house, configured in the dashboard rather than YAML."""
 from homeassistant import config_entries
+from homeassistant.core import callback
+import voluptuous as vol
 
 DOMAIN = "ma_maison_chauffage"
 
@@ -13,3 +15,26 @@ class HeatingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             return self.async_create_entry(title="Ma maison - Chauffage", data={})
         return self.async_show_form(step_id="user")
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return HeatingOptionsFlow()
+
+
+class HeatingOptionsFlow(config_entries.OptionsFlow):
+    async def async_step_init(self, user_input=None):
+        if user_input is not None:
+            name = user_input["house_name"].strip() or "Ma maison"
+            return self.async_create_entry(title="", data={"house_name": name})
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        "house_name",
+                        default=self.config_entry.options.get("house_name", "Ma maison"),
+                    ): vol.All(str, vol.Length(max=80)),
+                }
+            ),
+        )

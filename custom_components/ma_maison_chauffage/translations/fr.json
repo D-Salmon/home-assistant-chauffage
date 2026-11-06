@@ -1,1 +1,24 @@
-{"title":"Ma maison - Chauffage","config":{"step":{"user":{"title":"Ma maison - Chauffage","description":"Ajoutez ensuite la carte Ma maison pour choisir le relais, les plannings et vos pièces. Le chauffage démarre désactivé."}},"abort":{"already_configured":"Une maison est déjà configurée."}}}
+{
+  "title": "Ma maison - Chauffage",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ma maison - Chauffage",
+        "description": "Ajoutez ensuite la carte Ma maison pour choisir le relais, les plannings et vos pièces. Le chauffage démarre désactivé."
+      }
+    },
+    "abort": {
+      "already_configured": "Une maison est déjà configurée."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Nom affiché sur la carte",
+        "data": {
+          "house_name": "Nom de la maison"
+        }
+      }
+    }
+  }
+}

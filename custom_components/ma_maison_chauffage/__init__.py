@@ -24,9 +24,10 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, entry):
     from .frontend import async_setup_frontend
     await async_setup_frontend(hass)
-    runtime = HeatingRuntime(hass, entry.entry_id)
+    runtime = HeatingRuntime(hass, entry.entry_id, entry.options.get("house_name", "Ma maison"))
     await runtime.load()
     hass.data[DOMAIN] = runtime
+    entry.async_on_unload(entry.add_update_listener(async_update_options))
     hass.services.async_register(DOMAIN, "command", runtime.command)
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
     runtime.subscribe()
@@ -35,6 +36,14 @@ async def async_setup_entry(hass, entry):
     else:
         runtime.unsubs.append(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, runtime.start))
     return True
+
+
+async def async_update_options(hass, entry):
+    """Apply the display name without unloading the relay controller."""
+    runtime = hass.data.get(DOMAIN)
+    if runtime:
+        runtime.house_name = entry.options.get("house_name", "Ma maison")
+        async_dispatcher_send(hass, SIGNAL)
 
 
 async def async_unload_entry(hass, entry):
@@ -52,8 +61,9 @@ async def async_unload_entry(hass, entry):
 
 
 class HeatingRuntime:
-    def __init__(self, hass, entry_id):
+    def __init__(self, hass, entry_id, house_name="Ma maison"):
         self.hass = hass
+        self.house_name = house_name
         self.store = Store(hass, 1, DOMAIN + "." + entry_id, atomic_writes=True)
         self.data = initial_data()
         self.memory = {}

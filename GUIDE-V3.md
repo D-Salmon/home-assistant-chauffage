@@ -2,12 +2,12 @@
 
 L’intégration locale **Ma maison - Chauffage** conserve une seule liste de pièces, utilisée par l’affichage, les consignes et la commande chaudière. Ajouter, renommer ou retirer une vanne ne nécessite plus de YAML, d’assistants supplémentaires ni de redémarrage HA.
 
-## Installation avec HACS — version 3.2.6
+## Installation avec HACS — version 3.2.7
 
 Prérequis : Home Assistant **2025.7 ou ultérieur**, HACS installé et configuré, compte administrateur HA. Sur Home Assistant OS, si HACS n’est pas encore présent, suivre son [installation officielle, onglet OS/Supervised](https://www.hacs.dev/docs/use/download/download/), puis sa [configuration initiale](https://www.hacs.dev/docs/use/configuration/basic/).
 
 1. [Ouvrir ce dépôt dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=D-Salmon&repository=home-assistant-chauffage&category=integration). Si nécessaire, renseigner l’adresse de votre Home Assistant. Autre chemin : **HACS → ⋮ → Dépôts personnalisés**, URL `https://github.com/D-Salmon/home-assistant-chauffage`, type **Intégration**, puis Ajouter.
-2. Ouvrir **Ma maison - Chauffage** dans HACS et télécharger la version **3.2.6** ou une version ultérieure. Le dépôt est ajouté comme dépôt personnalisé ; il n’est pas dans le catalogue par défaut.
+2. Ouvrir **Ma maison - Chauffage** dans HACS et télécharger la version **3.2.7** ou une version ultérieure. Le dépôt est ajouté comme dépôt personnalisé ; il n’est pas dans le catalogue par défaut.
 3. **Redémarrer Home Assistant**. Ouvrir **Paramètres → Appareils et services → Ajouter une intégration → Ma maison - Chauffage**. Une seule maison est prise en charge ; le chauffage démarre désactivé.
 4. Ajouter la ressource JavaScript : aller dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, cliquer sur **Ajouter une ressource**, entrer `/ma-maison-chauffage-assets/bootstrap.js` et sélectionner **Module JavaScript**. Garder cette URL sans paramètre de version ; elle restera identique aux prochaines mises à jour.
 5. Recharger complètement le navigateur. Modifier un tableau de bord, choisir **Ajouter une carte → Manuel**, puis saisir `type: custom:ma-maison-chauffage-card`. La carte peut aussi apparaître dans la liste après l’ajout de la ressource.
@@ -34,6 +34,10 @@ Pour une ancienne installation **3.0 uniquement**, retirer les deux anciennes re
 
 Références : [dépôts personnalisés HACS](https://www.hacs.dev/docs/faq/custom_repositories/) et [liens directs HACS](https://www.hacs.dev/docs/use/my/).
 
+## Configuration de l’intégration
+
+Dans **Paramètres → Appareils et services → Ma maison - Chauffage → Configurer**, définir le nom affiché dans le bandeau de la carte.
+
 ## Gérer les pièces
 
 - **Ajouter une vanne** sélectionne une entité climate déjà présente dans HA. L’appairage reste une opération Zigbee2MQTT.
@@ -41,6 +45,8 @@ Références : [dépôts personnalisés HACS](https://www.hacs.dev/docs/faq/cust
 - **Retirer** demande confirmation, puis exclut la pièce de l’affichage, des envois de consigne et des demandes chaudière.
 
 **Retirer ne met pas la vanne sur OFF.** Elle conserve sa dernière consigne et peut encore chauffer avec le circuit. Mettez-la sur OFF dans sa fiche HA si vous souhaitez l’arrêter. Changer l’entité associée laisse également l’ancienne vanne sur sa dernière consigne.
+
+L’icône de pièce pulse lorsque la vanne signale une demande de chauffe (`hvac_action: heating`). Le bandeau indique le nombre de vannes qui demandent la chaudière.
 
 Chaque fiche gère une vanne ; une vanne ne peut appartenir à deux pièces. Le radiateur de salle de bain toujours ouvert ne doit pas être ajouté. Le nombre de pièces n’est pas fixé dans les fichiers. Les tests du registre couvrent 0, 1, 8, 20 et 50 pièces ; le pilote est testé avec vingt vannes simulées puis leur retrait. Cela ne constitue pas une validation de capacité d’un réseau Zigbee réel.
 

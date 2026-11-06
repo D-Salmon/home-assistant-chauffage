@@ -14,7 +14,7 @@ class HeatingRegistry(SensorEntity):
     _attr_name = "Ma maison chauffage"
     _attr_icon = "mdi:home-thermometer-outline"
     _attr_should_poll = False
-    _unrecorded_attributes = frozenset({"configuration", "status"})
+    _unrecorded_attributes = frozenset({"configuration", "status", "house_name"})
 
     def __init__(self, runtime, entry_id):
         self.runtime = runtime
@@ -26,7 +26,7 @@ class HeatingRegistry(SensorEntity):
 
     @property
     def extra_state_attributes(self):
-        return {"configuration": deepcopy(self.runtime.data), "status": deepcopy(self.runtime.status), "version": "3.2.6", "integration": DOMAIN}
+        return {"configuration": deepcopy(self.runtime.data), "status": deepcopy(self.runtime.status), "house_name": self.runtime.house_name, "version": "3.2.7", "integration": DOMAIN}
 
     async def async_added_to_hass(self):
         self.async_on_remove(async_dispatcher_connect(self.hass, SIGNAL, self.updated))
