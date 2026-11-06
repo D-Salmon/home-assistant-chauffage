@@ -2,20 +2,34 @@
 
 L’intégration locale **Ma maison - Chauffage** conserve une seule liste de pièces, utilisée par l’affichage, les consignes et la commande chaudière. Ajouter, renommer ou retirer une vanne ne nécessite plus de YAML, d’assistants supplémentaires ni de redémarrage HA.
 
-## Installation
+## Installation avec HACS — version 3.1
 
-1. Copier `custom_components/ma_maison_chauffage` dans `/config/custom_components/ma_maison_chauffage` sur HA.
-2. Copier `www/ma-maison-chauffage-card.js` et `configuration/chauffage-planning-card.js` dans `/config/www/`.
-3. Redémarrer HA. Ouvrir **Paramètres → Appareils et services → Ajouter une intégration → Ma maison - Chauffage**. Une seule maison est prise en charge ; le chauffage démarre désactivé.
-4. Dans les ressources des tableaux de bord, ajouter les deux URL suivantes, type **Module JavaScript**, puis recharger le navigateur :
-   - `/local/ma-maison-chauffage-card.js?v=3`
-   - `/local/chauffage-planning-card.js?v=3`
-5. Dans un tableau de bord, choisir **Ajouter une carte → Ma maison - Chauffage**. Elle trouve automatiquement le registre de l’intégration. `configuration/tableau-de-bord-dynamique.yaml` fournit aussi un exemple facultatif ; aucun YAML n’est obligatoire pour ajouter la carte.
-6. Dans **Réglages** de la carte, choisir le relais chaudière et les assistants Planning. Enregistrer en laissant **Chauffage autorisé** décoché.
-7. Dans **Pièces → Ajouter une vanne**, sélectionner une entité climate, saisir son nom et ses quatre températures, puis Enregistrer. Répéter pour le nombre de pièces souhaité.
-8. Vérifier les horaires dans **Plannings**, choisir le programme actif sur l’accueil, puis activer le chauffage après les vérifications matérielles.
+Prérequis : Home Assistant **2025.7 ou ultérieur**, HACS installé et configuré, compte administrateur HA. Sur Home Assistant OS, si HACS n’est pas encore présent, suivre son [installation officielle, onglet OS/Supervised](https://www.hacs.dev/docs/use/download/download/), puis sa [configuration initiale](https://www.hacs.dev/docs/use/configuration/basic/).
+
+1. [Ouvrir ce dépôt dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=D-Salmon&repository=home-assistant-chauffage&category=integration). Si nécessaire, renseigner l’adresse de votre Home Assistant. Autre chemin : **HACS → ⋮ → Dépôts personnalisés**, URL `https://github.com/D-Salmon/home-assistant-chauffage`, type **Intégration**, puis Ajouter.
+2. Ouvrir **Ma maison - Chauffage** dans HACS et télécharger la version **3.1.0** ou une version ultérieure. Le dépôt est ajouté comme dépôt personnalisé ; il n’est pas dans le catalogue par défaut.
+3. **Redémarrer Home Assistant**. Ouvrir **Paramètres → Appareils et services → Ajouter une intégration → Ma maison - Chauffage**. Une seule maison est prise en charge ; le chauffage démarre désactivé.
+4. **Recharger le navigateur**, puis modifier un tableau de bord et choisir **Ajouter une carte → Ma maison - Chauffage**. Les deux cartes sont embarquées et chargées automatiquement : aucun fichier JavaScript à copier ni ressource à déclarer. La carte trouve automatiquement le registre de l’intégration.
+5. Créer les assistants **Planning** souhaités dans **Paramètres → Appareils et services → Entrées → Créer une entrée → Planning** (le libellé peut être « Assistants » selon la traduction). Par exemple : Habituel et Vacances. Un programme contient une semaine complète, avec des horaires différents en semaine et le week-end.
+6. Dans **Réglages** de la carte, choisir le relais chaudière et ces assistants Planning. Enregistrer en laissant **Chauffage autorisé** décoché.
+7. Dans **Pièces → Ajouter une vanne**, sélectionner une entité climate déjà appairée dans Zigbee2MQTT, saisir son nom et ses quatre températures, puis Enregistrer. Répéter pour le nombre de pièces souhaité.
+8. Définir les horaires dans **Plannings**, choisir le programme actif sur l’accueil, puis activer le chauffage après les vérifications matérielles.
+
+HACS installe les fichiers et propose les mises à jour. L’appairage Zigbee, le choix du relais, la création des assistants Planning et l’ajout de la carte restent des étapes dans l’interface. Aucun YAML n’est nécessaire pour cette installation. Aucun jeton personnel GitHub propre à ce dépôt n’est requis ; HACS conserve son processus habituel de connexion GitHub.
 
 Button Card et les anciens packages YAML ne sont pas nécessaires à la version 3. Ne pas exécuter les anciens pilotes en parallèle. Les commandes de cette première version de l’intégration, y compris les changements de consigne, nécessitent un **compte administrateur HA**.
+
+### Installation manuelle facultative
+
+Sans HACS, télécharger la version publiée et copier uniquement son dossier `custom_components/ma_maison_chauffage` complet, **avec le sous-dossier `assets`**, dans `/config/custom_components/ma_maison_chauffage`. Reprendre à l’étape 3. `configuration/tableau-de-bord-dynamique.yaml` reste un exemple facultatif de carte.
+
+### Mises à jour
+
+Télécharger la mise à jour dans HACS, redémarrer HA, puis recharger le navigateur ou l’application compagnon. Les pièces, températures et réglages restent dans le stockage HA. Si une carte manque, vérifier que l’intégration est chargée, puis effectuer un rechargement complet de la page.
+
+Pour une ancienne installation **3.0 uniquement**, retirer les deux anciennes ressources `/local/ma-maison-chauffage-card.js` et `/local/chauffage-planning-card.js` des ressources du tableau de bord avant de recharger. La version 3.1 fournit ces cartes elle-même. **Pour une première installation, aucune migration n’est nécessaire.**
+
+Références : [dépôts personnalisés HACS](https://www.hacs.dev/docs/faq/custom_repositories/) et [liens directs HACS](https://www.hacs.dev/docs/use/my/).
 
 ## Gérer les pièces
 

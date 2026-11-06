@@ -1,6 +1,6 @@
 # Ma maison — Chauffage Home Assistant
 
-**Version 3 : ajouter, renommer et retirer les vannes depuis l’interface, sans modifier le YAML.**
+**Version 3.1 : installation via HACS, cartes incluses et vannes gérées depuis l’interface, sans modifier le YAML.**
 
 Une intégration locale conserve une seule liste de pièces pour l’affichage, les consignes et la coordination chaudière. Le nombre de vannes n’est plus fixé à huit. Interface mobile inspirée de Home + Control pour des TRV Zigbee2MQTT et un relais chaudière à contact sec.
 
@@ -19,13 +19,21 @@ Un radiateur de salle de bain reste ouvert et chauffe avec le circuit. Il ne né
 
 ## Installation
 
-Suivre le [guide V3](GUIDE-V3.md), y compris la migration depuis les anciens fichiers. Les [configurations V2](GUIDE-CHAUFFAGE.md) sont conservées pour référence, mais ne doivent pas commander le relais en parallèle.
+Sur Home Assistant **2025.7 ou ultérieur**, avec HACS installé :
 
-Installer le dossier d’intégration et les deux ressources JavaScript, puis ajouter l’intégration et la carte depuis l’interface HA. Button Card et les anciens packages ne sont pas nécessaires à V3. Les commandes nécessitent un compte administrateur HA dans cette version.
+1. [Ouvrir le dépôt dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=D-Salmon&repository=home-assistant-chauffage&category=integration), puis télécharger **Ma maison - Chauffage**. Autre chemin : HACS → Dépôts personnalisés → URL de ce dépôt → type Intégration.
+2. Redémarrer HA, puis ajouter l’intégration **Ma maison - Chauffage** dans Appareils et services.
+3. Recharger le navigateur et ajouter la carte **Ma maison - Chauffage** au tableau de bord.
+4. Choisir le relais, les assistants Planning et les vannes dans la carte, puis activer le chauffage après vérification.
+
+Les deux cartes sont téléchargées avec l’intégration et chargées automatiquement. Aucun fichier à copier ni ressource JavaScript à déclarer. Button Card et les anciens packages ne sont pas nécessaires. Les commandes nécessitent un compte administrateur HA dans cette version.
+
+Le [guide d’installation détaillé](GUIDE-V3.md) couvre aussi l’installation de HACS sur HAOS, la création des plannings et l’installation manuelle. **Première installation : aucune migration à faire.** Les [configurations V2](GUIDE-CHAUFFAGE.md) sont conservées pour référence, mais ne doivent pas commander le relais en parallèle.
 
 | Fichier | Fonction |
 |---|---|
 | [Intégration](custom_components/ma_maison_chauffage/) | Registre persistant et coordination dynamique |
+| [Cartes embarquées](custom_components/ma_maison_chauffage/assets/) | Fichiers installés et chargés automatiquement avec l’intégration |
 | [Carte dynamique](www/ma-maison-chauffage-card.js) | Accueil, gestion des pièces, profils et réglages |
 | [Tableau de bord minimal](configuration/tableau-de-bord-dynamique.yaml) | Exemple facultatif ; ajout de carte possible depuis l’interface |
 | [Éditeur de planning](configuration/chauffage-planning-card.js) | Carte personnalisée pour modifier les plages |
@@ -50,6 +58,7 @@ Prérequis : Python 3.11+ et une version Node.js compatible avec la dépendance 
 python -m pip install -r requirements-dev.txt
 npm ci --ignore-scripts
 python tests/test_dynamic.py
+python tests/test_frontend_bundle.py
 npm test
 ```
 
@@ -61,7 +70,14 @@ node tests/test_dashboard.cjs
 node tests/test_planning_card.cjs
 ```
 
-Les tests vérifient notamment les priorités des quatre profils, les dérogations expirées après redémarrage, les temporisations chaudière, les références d’entités et les routes du tableau de bord. L’éditeur est testé pour les chevauchements, les conflits d’édition et les plages se terminant à 24:00.
+Les tests vérifient notamment les priorités des quatre profils, les dérogations expirées après redémarrage, les temporisations chaudière, les références d’entités et les routes du tableau de bord. L’éditeur est testé pour les chevauchements, les conflits d’édition et les plages se terminant à 24:00. Les tests du paquet vérifient les cartes embarquées, leur version et leur enregistrement sans modifier les autres modules du frontend.
+
+Après modification d’une carte source, régénérer les copies embarquées et les inclure dans le commit :
+
+```sh
+python scripts/build_frontend.py
+python tests/test_frontend_bundle.py
+```
 
 Pour régénérer les anciens fichiers **V2 uniquement** :
 
