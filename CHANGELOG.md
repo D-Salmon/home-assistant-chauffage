@@ -1,5 +1,9 @@
 # Historique
 
+## 3.2.2 — 6 novembre 2026
+
+- Explications dans les réglages sur l’anticipation et le capteur extérieur, ainsi que sur les quatre temporisations chaudière (confirmation, arrêt, repos du relais et ancienneté du dernier contact).
+
 ## 3.2.1 — 6 novembre 2026
 
 - URL Lovelace stable sans numéro de version ; les fichiers de cartes ne reçoivent plus le cache d’un mois après redémarrage HA.
