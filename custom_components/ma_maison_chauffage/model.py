@@ -13,6 +13,7 @@ def initial_data():
         "enabled": False, "absent": False, "relay": "", "schedules": [],
         "active_schedule": "", "confirm_seconds": 30, "stop_seconds": 30,
         "minimum_off": 180, "freshness_minutes": 120,
+        "anticipation_enabled": True, "anticipation_window_days": 14, "outdoor_sensor": "",
     }}
 
 
@@ -52,17 +53,21 @@ def change(data, operation, payload, now):
         raise ValueError("Données invalides.")
     rooms, settings = new["rooms"], new["settings"]
     if operation == "save_room":
-        allowed = {"id", "name", "entity", "temperatures", "mode", "last_seen"}
+        allowed = {"id", "name", "entity", "temperatures", "mode", "last_seen", "pause_entity"}
         if set(payload) - allowed:
             raise ValueError("Champ de pièce inconnu.")
         old = next((r for r in rooms if r["id"] == payload.get("id")), None)
         if "id" in payload and old is None:
             raise ValueError("La pièce n’existe plus. Rechargez la page.")
-        room = deepcopy(old) if old else {"id": uuid.uuid4().hex, "mode": "planning", "override": None, "last_seen": "", "temperatures": deepcopy(DEFAULT_TEMPS)}
+        room = deepcopy(old) if old else {"id": uuid.uuid4().hex, "mode": "planning", "override": None, "last_seen": "", "pause_entity": "", "temperatures": deepcopy(DEFAULT_TEMPS)}
         room.update(payload)
         room["name"] = label(room.get("name"))
         room["entity"] = entity_id(room.get("entity"), "climate")
         room["last_seen"] = entity_id(room["last_seen"], "sensor", optional=True)
+        pause_entity = room.get("pause_entity", "")
+        if pause_entity and (not isinstance(pause_entity, str) or not re.fullmatch(r"(?:binary_sensor|input_boolean|switch)\.[a-z0-9_]+", pause_entity)):
+            raise ValueError("Choisissez une entité de fenêtre ou un interrupteur.")
+        room["pause_entity"] = pause_entity
         if any(r["entity"] == room["entity"] and r["id"] != room["id"] for r in rooms):
             raise ValueError("Cette vanne est déjà utilisée par une autre pièce.")
         if room["mode"] not in ("planning", *PROFILES):
@@ -94,12 +99,15 @@ def change(data, operation, payload, now):
             raise ValueError("Réglage inconnu.")
         previous = deepcopy(settings)
         settings.update(payload)
-        for key in ("enabled", "absent"):
+        for key in ("enabled", "absent", "anticipation_enabled"):
             if not isinstance(settings[key], bool):
                 raise ValueError("Valeur oui/non attendue.")
         entity_id(settings["relay"], "switch", optional=not settings["enabled"])
+        entity_id(settings["outdoor_sensor"], "sensor", optional=True)
         for key, maximum in [("confirm_seconds", 600), ("stop_seconds", 300), ("minimum_off", 1800), ("freshness_minutes", 1500)]:
             number(settings[key], 0 if key != "freshness_minutes" else 5, maximum)
+        if settings["anticipation_window_days"] not in (7, 14):
+            raise ValueError("La période d’apprentissage doit être de 7 ou 14 jours.")
         if not isinstance(settings["schedules"], list):
             raise ValueError("Liste de plannings attendue.")
         seen = set()

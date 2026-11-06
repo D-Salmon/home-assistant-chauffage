@@ -1,5 +1,12 @@
 # Historique
 
+## 3.2.0 — 6 novembre 2026
+
+- Apprentissage glissant individuel par pièce des vitesses de chauffe et de refroidissement, conservé lorsque le chauffage est désactivé.
+- Anticipation de montée de consigne et arrêt anticipé avant les transitions vers un profil plus frais, avec capteur extérieur facultatif.
+- Pause d’une pièce par entité `binary_sensor`, `input_boolean` ou `switch`, active tant que l’entité est à `on`.
+- Réglage dans l’interface de l’apprentissage sur 7 ou 14 jours ; actualisation des cartes embarquées et guide HACS.
+
 ## 3.1.2 — 6 novembre 2026
 
 - Reconstruit les cartes embarquées avec le contraste corrigé et les effets de survol ; nouvelle version d’URL pour invalider le cache du navigateur.

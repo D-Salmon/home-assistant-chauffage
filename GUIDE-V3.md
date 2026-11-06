@@ -2,14 +2,14 @@
 
 L’intégration locale **Ma maison - Chauffage** conserve une seule liste de pièces, utilisée par l’affichage, les consignes et la commande chaudière. Ajouter, renommer ou retirer une vanne ne nécessite plus de YAML, d’assistants supplémentaires ni de redémarrage HA.
 
-## Installation avec HACS — version 3.1.2
+## Installation avec HACS — version 3.2.0
 
 Prérequis : Home Assistant **2025.7 ou ultérieur**, HACS installé et configuré, compte administrateur HA. Sur Home Assistant OS, si HACS n’est pas encore présent, suivre son [installation officielle, onglet OS/Supervised](https://www.hacs.dev/docs/use/download/download/), puis sa [configuration initiale](https://www.hacs.dev/docs/use/configuration/basic/).
 
 1. [Ouvrir ce dépôt dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=D-Salmon&repository=home-assistant-chauffage&category=integration). Si nécessaire, renseigner l’adresse de votre Home Assistant. Autre chemin : **HACS → ⋮ → Dépôts personnalisés**, URL `https://github.com/D-Salmon/home-assistant-chauffage`, type **Intégration**, puis Ajouter.
-2. Ouvrir **Ma maison - Chauffage** dans HACS et télécharger la version **3.1.2** ou une version ultérieure. Le dépôt est ajouté comme dépôt personnalisé ; il n’est pas dans le catalogue par défaut.
+2. Ouvrir **Ma maison - Chauffage** dans HACS et télécharger la version **3.2.0** ou une version ultérieure. Le dépôt est ajouté comme dépôt personnalisé ; il n’est pas dans le catalogue par défaut.
 3. **Redémarrer Home Assistant**. Ouvrir **Paramètres → Appareils et services → Ajouter une intégration → Ma maison - Chauffage**. Une seule maison est prise en charge ; le chauffage démarre désactivé.
-4. Ajouter la ressource JavaScript : aller dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, cliquer sur **Ajouter une ressource**, entrer `/ma-maison-chauffage-assets/bootstrap.js?v=3.1.2` et sélectionner **Module JavaScript**. L’intégration fournit cette ressource ; aucun fichier n’est à copier.
+4. Ajouter la ressource JavaScript : aller dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, cliquer sur **Ajouter une ressource**, entrer `/ma-maison-chauffage-assets/bootstrap.js?v=3.2.0` et sélectionner **Module JavaScript**. L’intégration fournit cette ressource ; aucun fichier n’est à copier.
 5. Recharger complètement le navigateur. Modifier un tableau de bord, choisir **Ajouter une carte → Manuel**, puis saisir `type: custom:ma-maison-chauffage-card`. La carte peut aussi apparaître dans la liste après l’ajout de la ressource.
 6. Créer les assistants **Planning** souhaités dans **Paramètres → Appareils et services → Entrées → Créer une entrée → Planning** (le libellé peut être « Assistants » selon la traduction). Par exemple : Habituel et Vacances. Un programme contient une semaine complète, avec des horaires différentes en semaine et le week-end.
 7. Dans **Réglages** de la carte, choisir le relais chaudière et ces assistants Planning. Enregistrer en laissant **Chauffage autorisé** décoché.
@@ -42,6 +42,8 @@ Références : [dépôts personnalisés HACS](https://www.hacs.dev/docs/faq/cust
 
 Chaque fiche gère une vanne ; une vanne ne peut appartenir à deux pièces. Le radiateur de salle de bain toujours ouvert ne doit pas être ajouté. Le nombre de pièces n’est pas fixé dans les fichiers. Les tests du registre couvrent 0, 1, 8, 20 et 50 pièces ; le pilote est testé avec vingt vannes simulées puis leur retrait. Cela ne constitue pas une validation de capacité d’un réseau Zigbee réel.
 
+Dans la modification d’une pièce, **Déclencheur de pause** permet de choisir un `binary_sensor`, un `input_boolean` ou un `switch`. Quand l’entité est active (`on`), la vanne de cette pièce est mise sur OFF et elle ne demande pas la chaudière. Quand elle redevient inactive, le chauffage reprend selon le mode et le planning courants. Une entité indisponible suspend également la pièce par sécurité. Cela convient notamment à un capteur de fenêtre ou à un interrupteur maintenu ; il n’y a pas de durée temporisée.
+
 ## Les quatre profils
 
 Chaque pièce possède **Confort, Éco, Nuit et Absent**, indépendants, entre 5 et 25 °C par pas de 0,5 °C. Les limites annoncées par la vanne sont contrôlées avant envoi.
@@ -67,6 +69,12 @@ Dans **Plannings**, choisir le programme à éditer et le jour, ajouter des plag
 L’édition ne change pas le programme **actif** sélectionné sur l’accueil. L’éditeur modifie les assistants créés dans l’interface HA, pas les plannings définis en YAML. Les programmes V2 sont réutilisables : les plages utilisent `profil`, et une plage sans cette donnée signifie Confort. L’éditeur renseigne cette donnée pour vous.
 
 Les horaires du programme actif sont communs aux pièces en mode Planning ; chacune utilise sa propre température pour le profil choisi.
+
+### Anticipation adaptative
+
+Dans **Réglages**, activer **Anticipation adaptative chauffe et arrêt** et choisir une fenêtre d’apprentissage de 7 ou 14 jours. Chaque vanne apprend séparément les vitesses de montée et de baisse de température ; le profil de la prochaine plage est appliqué en avance selon l’estimation. Une transition vers un profil plus frais (y compris la fin d’une plage vers Éco) peut donc couper la chauffe avant l’heure, en fonction de l’inertie observée. Sans historique exploitable, l’estimation démarre avec une marge prudente de 30 minutes.
+
+Les mesures sont ajoutées environ toutes les cinq minutes tant que **Chauffage autorisé** est activé, y compris pendant les phases où le relais est momentanément arrêté afin d’apprendre le refroidissement. Désactiver le chauffage suspend l’apprentissage, mais conserve les données. Les échantillons expirent au fil de la fenêtre glissante. Une nouvelle pièce commence sans historique ; remplacer sa vanne efface l’ancien apprentissage. Le capteur extérieur est facultatif : lorsqu’il est choisi, les observations faites à une température extérieure proche sont privilégiées quand il y en a suffisamment. Cette fonction est une estimation locale, pas l’apprentissage propriétaire de Netatmo ; le résultat doit être ajusté à l’usage réel.
 
 ## Coordination chaudière et défauts
 
@@ -103,4 +111,3 @@ Le registre et les échéances sont conservés dans le stockage HA `.storage`, s
 Validation locale : tests de logique, pilote avec services et stockage HA simulés, formulaires dans un DOM simulé. Cette version n’a pas été exécutée sur votre installation HA ni votre chaudière.
 
 Vérifier sur le matériel : une pièce seule, plusieurs pièces, retour au repos, Absent maison, Absent permanent d’une chambre, expiration d’une dérogation, redémarrage, vanne indisponible et retrait de la dernière pièce. Les simulations ne remplacent pas ces essais.
-

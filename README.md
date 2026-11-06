@@ -1,6 +1,6 @@
 # Ma maison — Chauffage Home Assistant
 
-**Version 3.1.1 : installation HACS, ressource de carte à déclarer, contraste amélioré et boutons éclairés au survol.**
+**Version 3.2.0 : anticipation adaptative de chauffe et d’arrêt, apprentissage individuel par pièce et pause sur capteur/interrupteur.**
 
 Une intégration locale conserve une seule liste de pièces pour l’affichage, les consignes et la coordination chaudière. Le nombre de vannes n’est plus fixé à huit. Interface mobile inspirée de Home + Control pour des TRV Zigbee2MQTT et un relais chaudière à contact sec.
 
@@ -14,6 +14,8 @@ Une intégration locale conserve une seule liste de pièces pour l’affichage, 
 - Éditeur graphique des plages : choix du jour, début, fin, profil, copie vers d’autres jours, validation avant enregistrement.
 - Bouton **Absent** pour toute la maison, avec la température Absent de chaque pièce.
 - Coordination chaudière : une demande valide suffit ; temporisations, contrôle périodique, exclusions des vannes indisponibles et notifications.
+- Anticipation de chauffe et d’arrêt selon l’inertie apprise séparément pour chaque pièce, sur 7 ou 14 jours glissants. Les données sont conservées à l’arrêt et un capteur extérieur peut affiner les comparaisons.
+- Pause par pièce avec un capteur d’ouverture, un interrupteur d’aide ou un switch : la pièce est suspendue tant que l’entité est active.
 
 Un radiateur de salle de bain reste ouvert et chauffe avec le circuit. Il ne nécessite pas d’entité de commande supplémentaire.
 
@@ -23,7 +25,7 @@ Sur Home Assistant **2025.7 ou ultérieur**, avec HACS installé :
 
 1. [Ouvrir le dépôt dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=D-Salmon&repository=home-assistant-chauffage&category=integration), puis télécharger **Ma maison - Chauffage**. Autre chemin : HACS → Dépôts personnalisés → URL de ce dépôt → type Intégration.
 2. Redémarrer HA, puis ajouter l’intégration **Ma maison - Chauffage** dans Appareils et services.
-3. Dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, ajouter `/ma-maison-chauffage-assets/bootstrap.js?v=3.1.2` comme **Module JavaScript**.
+3. Dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, ajouter `/ma-maison-chauffage-assets/bootstrap.js?v=3.2.0` comme **Module JavaScript**.
 4. Recharger la page et ajouter la carte. Si elle n’est pas listée, choisir **Manuel** et saisir `type: custom:ma-maison-chauffage-card`. Choisir ensuite le relais, les plannings et les vannes.
 
 Les deux cartes sont téléchargées avec l’intégration. La ressource JavaScript doit être déclarée une fois dans le tableau de bord ; aucun fichier n’est à copier. Button Card et les anciens packages ne sont pas nécessaires. Les commandes nécessitent un compte administrateur HA dans cette version.
@@ -40,7 +42,7 @@ Le [guide d’installation détaillé](GUIDE-V3.md) couvre aussi l’installatio
 
 ## État de validation et limites
 
-La version 3 est testée localement : profils, temporisations, ajouts/retraits, doublons, redémarrage, stockage, droits et formulaires. Le registre est testé de zéro à cinquante pièces, et le pilote simulé avec vingt vannes. Elle reste à valider sur une installation HA réelle et une chaudière. Le stockage, les services HA et le DOM des formulaires sont simulés.
+Les versions 3.0 à 3.1 ont été testées localement pour les profils, temporisations, ajouts/retraits, stockage, droits et formulaires. La version 3.2 ajoute l’apprentissage, l’anticipation et la pause par pièce ; ces nouvelles fonctions nécessitent une validation sur une installation HA réelle avant usage avec la chaudière. Le stockage, les services HA et le DOM des formulaires sont simulés dans les tests locaux.
 
 Retirer une pièce arrête sa gestion sans changer sa dernière consigne physique. Mettre la vanne sur OFF dans HA pour arrêter ce radiateur. Les associations et températures V2 doivent être reportées via l’interface ; l’import n’est pas automatique.
 
@@ -48,7 +50,7 @@ Les horaires sont communs aux pièces en mode Planning ; les températures sont 
 
 HA doit fonctionner pour envoyer les ordres. Ce projet ne fournit pas d’arrêt autonome du relais en cas de panne de HA, du réseau Zigbee ou de Zigbee2MQTT. Les détails des temporisations, des défauts et des essais matériels sont dans le guide.
 
-Le projet ne reproduit pas l’anticipation thermique Netatmo, ses statistiques énergétiques ni son application complète. Il n’est affilié ni à Legrand, ni à Netatmo, ni à Sonoff.
+L’anticipation de cette intégration apprend les variations de température observées par chaque pièce ; elle ne reproduit pas l’apprentissage propriétaire Netatmo. Le projet n’est affilié ni à Legrand, ni à Netatmo, ni à Sonoff.
 
 ## Développement et tests
 
@@ -95,4 +97,3 @@ Cette commande réécrit les anciens fichiers avec huit entités d’exemple. El
 - [Button Card](https://custom-cards.github.io/button-card/)
 
 Les fichiers ne contiennent que des noms d’entités d’exemple. Ne pas y ajouter de jetons d’accès, mots de passe ou exports privés de Home Assistant.
-

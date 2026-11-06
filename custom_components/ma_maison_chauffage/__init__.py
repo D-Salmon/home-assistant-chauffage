@@ -14,6 +14,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .model import change, decide, initial_data, supported_temperature, target
+from .learning import add_sample, estimate_minutes, upcoming_block
 
 DOMAIN = "ma_maison_chauffage"
 SIGNAL = DOMAIN + "_updated"
@@ -56,6 +57,9 @@ class HeatingRuntime:
         self.store = Store(hass, 1, DOMAIN + "." + entry_id, atomic_writes=True)
         self.data = initial_data()
         self.memory = {}
+        self.learning = {}
+        self.schedule_data = None
+        self.schedule_data_at = 0
         self.status = {"rooms": [], "faults": [], "relay": "unknown"}
         self.lock = asyncio.Lock()
         self.unsubs = []
@@ -72,9 +76,12 @@ class HeatingRuntime:
         if saved:
             self.data = saved["configuration"]
             self.memory = saved.get("memory", {})
+            self.learning = saved.get("learning", {})
+        for key, value in initial_data()["settings"].items():
+            self.data["settings"].setdefault(key, value)
 
     async def persist(self):
-        await self.store.async_save({"configuration": deepcopy(self.data), "memory": deepcopy(self.memory)})
+        await self.store.async_save({"configuration": deepcopy(self.data), "memory": deepcopy(self.memory), "learning": deepcopy(self.learning)})
 
     @callback
     def subscribe(self):
@@ -87,8 +94,10 @@ class HeatingRuntime:
         s = self.data["settings"]
         watched = {s["relay"], s["active_schedule"]}
         watched.update(r["entity"] for r in self.data["rooms"])
+        watched.update(r.get("pause_entity", "") for r in self.data["rooms"] if r.get("pause_entity"))
         watched.update(r["last_seen"] for r in self.data["rooms"] if r["last_seen"])
-        if self.started and event.data.get("entity_id") in watched and not self.lock.locked():
+        entity = event.data.get("entity_id")
+        if self.started and entity in watched and not self.lock.locked():
             self.hass.async_create_task(self.tick())
 
     async def start(self, _event=None):
@@ -118,9 +127,12 @@ class HeatingRuntime:
     async def shutdown(self, _event):
         await self.stop()
 
-    async def service(self, domain, action, data):
+    async def service(self, domain, action, data, return_response=False):
         async with asyncio.timeout(8):
-            await self.hass.services.async_call(domain, action, data, blocking=True)
+            kwargs = {"blocking": True}
+            if return_response:
+                kwargs["return_response"] = True
+            return await self.hass.services.async_call(domain, action, data, **kwargs)
 
     async def command(self, call):
         # Both room administration and controls require an administrator in v3.
@@ -131,8 +143,15 @@ class HeatingRuntime:
             if call.data.get("revision") != self.data["revision"]:
                 raise ServiceValidationError("Les réglages ont changé ailleurs. Rechargez la carte.")
             operation = call.data.get("operation")
+            new_learning = deepcopy(self.learning)
             try:
                 new = change(self.data, operation, call.data.get("payload", {}), time.time())
+                if operation in ("save_room", "remove_room"):
+                    old_rooms = {r["id"]: r for r in self.data["rooms"]}
+                    new_rooms = {r["id"]: r for r in new["rooms"]}
+                    for room_id, old_room in old_rooms.items():
+                        if room_id not in new_rooms or new_rooms[room_id]["entity"] != old_room["entity"]:
+                            new_learning.pop(room_id, None)
                 if operation == "save_room":
                     requested = call.data.get("payload", {}).get("entity")
                     old_entities = {r["entity"] for r in self.data["rooms"]}
@@ -154,8 +173,12 @@ class HeatingRuntime:
             except (ValueError, TypeError, KeyError) as exc:
                 raise ServiceValidationError(str(exc)) from exc
             # Durable save precedes replacing the live model and sending orders.
-            await self.store.async_save({"configuration": new, "memory": deepcopy(self.memory)})
+            await self.store.async_save({"configuration": deepcopy(new), "memory": deepcopy(self.memory), "learning": deepcopy(new_learning)})
             self.data = new
+            self.learning = new_learning
+            if settings["active_schedule"] != previous["active_schedule"]:
+                self.schedule_data = None
+                self.schedule_data_at = 0
             self.command_errors.clear()
             self.retry_after.clear()
             for task in self.tasks.values():
@@ -169,6 +192,44 @@ class HeatingRuntime:
     def snapshot(self, entity):
         state = self.hass.states.get(entity) if entity else None
         return {"state": state.state, "attributes": dict(state.attributes)} if state else None
+
+    def desired_target(self, room, schedule, now):
+        settings = self.data["settings"]
+        value, profile = target(room, settings, schedule, now)
+        if not (settings["enabled"] and settings["anticipation_enabled"] and not settings["absent"]
+                and room["mode"] == "planning" and not room.get("override") and value is not None):
+            return value, profile
+        next_time, next_profile = upcoming_block(self.schedule_data, dt_util.now())
+        if next_time is None:
+            return value, profile
+        minutes = (next_time - now) / 60
+        state = self.snapshot(room["entity"])
+        current = state["attributes"].get("current_temperature") if state else None
+        outdoor_state = self.snapshot(settings.get("outdoor_sensor", ""))
+        try:
+            outdoor = float(outdoor_state["state"]) if outdoor_state and outdoor_state["attributes"].get("unit_of_measurement") == "°C" else None
+        except (TypeError, ValueError):
+            outdoor = None
+        samples = self.learning.get(room["id"], [])
+        next_target = room["temperatures"].get(next_profile)
+        if next_target is None or next_target == value:
+            return value, profile
+        if next_target > value:
+            lead, _ = estimate_minutes(samples, current, next_target, now, settings["anticipation_window_days"], True, outdoor)
+            if minutes <= lead:
+                return next_target, "anticipation chauffe"
+        elif next_target < value:
+            lead, _ = estimate_minutes(samples, current, next_target, now, settings["anticipation_window_days"], False, outdoor)
+            if minutes <= lead:
+                return next_target, "anticipation arrêt"
+        return value, profile
+
+    def room_paused(self, room, now):
+        entity = room.get("pause_entity", "")
+        if not entity:
+            return False
+        state = self.snapshot(entity)
+        return bool(not state or state["state"] in ("unknown", "unavailable", "on"))
 
     @callback
     def publish(self):
@@ -186,21 +247,43 @@ class HeatingRuntime:
                 self.tasks.pop(key, None)
         task.add_done_callback(done)
 
+    def queue_pause(self, room):
+        key = room["id"]
+        if key in self.tasks:
+            return
+        task = self.hass.async_create_task(self.pause_valve(room))
+        self.tasks[key] = task
+        task.add_done_callback(lambda finished: self.tasks.pop(key, None) if self.tasks.get(key) is finished else None)
+
+    async def pause_valve(self, room):
+        try:
+            async with self.limit:
+                if not self.started or not self.room_paused(room, time.time()):
+                    return
+                state = self.snapshot(room["entity"])
+                if state and state["state"] == "heat":
+                    await self.service("climate", "set_hvac_mode", {"entity_id": room["entity"], "hvac_mode": "off"})
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self.command_errors[room["id"]] = "Pause impossible : " + str(exc)
+            _LOGGER.warning("Mise en pause impossible pour %s: %s", room["entity"], exc)
+
     async def setpoint(self, room, value, revision):
         try:
             async with self.limit:
-                if not self.started or self.data["revision"] != revision or not self.data["settings"]["enabled"]:
+                if not self.started or self.data["revision"] != revision or not self.data["settings"]["enabled"] or self.room_paused(room, time.time()):
                     return
-                if target(room, self.data["settings"], self.snapshot(self.data["settings"]["active_schedule"]), time.time())[0] != value:
+                if self.desired_target(room, self.snapshot(self.data["settings"]["active_schedule"]), time.time())[0] != value:
                     return
                 current = self.snapshot(room["entity"])
                 if not current or current["state"] in ("unknown", "unavailable"):
                     return
                 if current["state"] != "heat":
                     await self.service("climate", "set_hvac_mode", {"entity_id": room["entity"], "hvac_mode": "heat"})
-                if self.data["revision"] != revision or not self.data["settings"]["enabled"]:
+                if self.data["revision"] != revision or not self.data["settings"]["enabled"] or self.room_paused(room, time.time()):
                     return
-                if target(room, self.data["settings"], self.snapshot(self.data["settings"]["active_schedule"]), time.time())[0] != value:
+                if self.desired_target(room, self.snapshot(self.data["settings"]["active_schedule"]), time.time())[0] != value:
                     return
                 if current["attributes"].get("temperature") != value:
                     await self.service("climate", "set_temperature", {"entity_id": room["entity"], "temperature": value})
@@ -237,17 +320,38 @@ class HeatingRuntime:
         async with self.lock:
             now, s = time.time(), self.data["settings"]
             schedule = self.snapshot(s["active_schedule"])
+            if s["enabled"] and s["anticipation_enabled"] and s["active_schedule"]:
+                if self.schedule_data is None or now - self.schedule_data_at >= 600:
+                    try:
+                        response = await self.service("schedule", "get_schedule", {"entity_id": s["active_schedule"]}, return_response=True)
+                        self.schedule_data = response.get(s["active_schedule"]) if isinstance(response, dict) else None
+                        self.schedule_data_at = now
+                    except Exception:
+                        _LOGGER.debug("Impossible de lire le planning pour l’anticipation", exc_info=True)
             heating, faults, rows = [], [], []
+            learning_changed = False
             for room in self.data["rooms"]:
                 state = self.snapshot(room["entity"])
-                value, profile = target(room, s, schedule, now)
+                paused = self.room_paused(room, now)
+                value, profile = (None, "pause") if paused else self.desired_target(room, schedule, now)
                 attrs = state["attributes"] if state else {}
+                current_temp = attrs.get("current_temperature")
+                learned = self.learning.get(room["id"], [])
+                outdoor_state = self.snapshot(s.get("outdoor_sensor", ""))
+                try:
+                    outdoor_temp = float(outdoor_state["state"]) if outdoor_state and outdoor_state["attributes"].get("unit_of_measurement") == "°C" else None
+                except (TypeError, ValueError):
+                    outdoor_temp = None
+                warm_minutes, warm_count = estimate_minutes(learned, current_temp, room["temperatures"]["confort"], now, s["anticipation_window_days"], True, outdoor_temp)
+                cool_minutes, cool_count = estimate_minutes(learned, current_temp, room["temperatures"]["eco"], now, s["anticipation_window_days"], False, outdoor_temp)
+                anticipating = profile == "anticipation chauffe"
+                stopping_early = profile == "anticipation arrêt"
                 fault = None
                 if not state or state["state"] in ("unknown", "unavailable"):
                     fault = "Vanne indisponible"
                 elif attrs.get("hvac_action") not in ("heating", "idle", "off"):
                     fault = "État de chauffe inconnu"
-                elif s["enabled"] and value is None:
+                elif s["enabled"] and value is None and not paused:
                     fault = profile
                 elif value is not None and not supported_temperature(attrs, value):
                     fault = "Consigne hors limites de la vanne"
@@ -256,24 +360,35 @@ class HeatingRuntime:
                     stamp = dt_util.parse_datetime(seen["state"]) if seen else None
                     if stamp is None or not -60 <= now - stamp.timestamp() <= s["freshness_minutes"] * 60:
                         fault = "Dernier contact trop ancien"
+                if (s["enabled"] and attrs.get("hvac_action") in ("heating", "idle") and fault is None
+                        and isinstance(current_temp, (int, float))):
+                    samples, changed = add_sample(learned, now, current_temp, attrs.get("hvac_action") == "heating", s["anticipation_window_days"], outdoor_temp)
+                    if changed or samples != learned:
+                        self.learning[room["id"]] = samples
+                        learning_changed = True
                 if value is not None and state and state["state"] not in ("unknown", "unavailable") and fault not in ("Consigne hors limites de la vanne", "Dernier contact trop ancien"):
                     if state["state"] != "heat" or attrs.get("temperature") != value or room["id"] in self.command_errors:
                         self.queue_setpoint(room, value, now)
+                elif paused and state and state["state"] == "heat":
+                    self.queue_pause(room)
                 fault = fault or self.command_errors.get(room["id"])
                 if fault:
                     faults.append(room["name"] + " : " + fault)
-                elif s["enabled"] and attrs.get("hvac_action") == "heating":
+                elif s["enabled"] and not paused and attrs.get("hvac_action") == "heating":
                     heating.append(room["id"])
                 rows.append({"id": room["id"], "current_temperature": attrs.get("current_temperature"),
                              "temperature": attrs.get("temperature"), "target": value, "profile": profile,
-                             "hvac_action": attrs.get("hvac_action"), "fault": fault})
+                             "hvac_action": attrs.get("hvac_action"), "fault": fault,
+                             "anticipation_minutes": round(warm_minutes), "anticipation_cool_minutes": round(cool_minutes),
+                             "learning_samples": warm_count, "learning_cool_samples": cool_count,
+                             "anticipating": anticipating or stopping_early, "paused": paused})
             relay = self.snapshot(s["relay"])
             actual = relay["state"] if relay else "unknown"
             memory, send = decide(s, len(rows), heating, faults, actual, self.memory, now, self.reset)
             self.reset = False
             changed = memory != self.memory
             self.memory = memory
-            if changed:
+            if changed or learning_changed:
                 await self.persist()
             if send and s["relay"]:
                 try:
