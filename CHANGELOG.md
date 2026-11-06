@@ -1,5 +1,11 @@
 # Historique
 
+## 3.2.3 — 6 novembre 2026
+
+- Renomme le réglage du dernier contact pour préciser qu’il s’agit de la dernière communication de la vanne.
+- Place les textes d’aide de la carte derrière un bouton « ? », visible au besoin.
+
+
 ## 3.2.2 — 6 novembre 2026
 
 - Explications dans les réglages sur l’anticipation et le capteur extérieur, ainsi que sur les quatre temporisations chaudière (confirmation, arrêt, repos du relais et ancienneté du dernier contact).
