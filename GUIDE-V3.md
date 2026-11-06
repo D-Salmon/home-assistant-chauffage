@@ -2,12 +2,12 @@
 
 L’intégration locale **Ma maison - Chauffage** conserve une seule liste de pièces, utilisée par l’affichage, les consignes et la commande chaudière. Ajouter, renommer ou retirer une vanne ne nécessite plus de YAML, d’assistants supplémentaires ni de redémarrage HA.
 
-## Installation avec HACS — version 3.2.5
+## Installation avec HACS — version 3.2.6
 
 Prérequis : Home Assistant **2025.7 ou ultérieur**, HACS installé et configuré, compte administrateur HA. Sur Home Assistant OS, si HACS n’est pas encore présent, suivre son [installation officielle, onglet OS/Supervised](https://www.hacs.dev/docs/use/download/download/), puis sa [configuration initiale](https://www.hacs.dev/docs/use/configuration/basic/).
 
 1. [Ouvrir ce dépôt dans HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=D-Salmon&repository=home-assistant-chauffage&category=integration). Si nécessaire, renseigner l’adresse de votre Home Assistant. Autre chemin : **HACS → ⋮ → Dépôts personnalisés**, URL `https://github.com/D-Salmon/home-assistant-chauffage`, type **Intégration**, puis Ajouter.
-2. Ouvrir **Ma maison - Chauffage** dans HACS et télécharger la version **3.2.5** ou une version ultérieure. Le dépôt est ajouté comme dépôt personnalisé ; il n’est pas dans le catalogue par défaut.
+2. Ouvrir **Ma maison - Chauffage** dans HACS et télécharger la version **3.2.6** ou une version ultérieure. Le dépôt est ajouté comme dépôt personnalisé ; il n’est pas dans le catalogue par défaut.
 3. **Redémarrer Home Assistant**. Ouvrir **Paramètres → Appareils et services → Ajouter une intégration → Ma maison - Chauffage**. Une seule maison est prise en charge ; le chauffage démarre désactivé.
 4. Ajouter la ressource JavaScript : aller dans **Paramètres → Tableaux de bord → ⋮ → Ressources**, cliquer sur **Ajouter une ressource**, entrer `/ma-maison-chauffage-assets/bootstrap.js` et sélectionner **Module JavaScript**. Garder cette URL sans paramètre de version ; elle restera identique aux prochaines mises à jour.
 5. Recharger complètement le navigateur. Modifier un tableau de bord, choisir **Ajouter une carte → Manuel**, puis saisir `type: custom:ma-maison-chauffage-card`. La carte peut aussi apparaître dans la liste après l’ajout de la ressource.
@@ -82,7 +82,7 @@ Les mesures sont ajoutées environ toutes les cinq minutes tant que **Chauffage 
 
 Les TRV régulent localement ; le pilote choisit le mode **heat** et la consigne. Activer le contrôle intelligent/PID dans Zigbee2MQTT si souhaité. Une seule demande valide `hvac_action: heating` suffit pour demander la chaudière.
 
-Valeurs initiales : confirmation 30 s, arrêt après disparition de la demande 30 s, repos minimal du relais 180 s. La réévaluation est périodique toutes les 15 s et réagit aux changements d’état. Adapter ces valeurs à la chaudière. Au redémarrage avec relais OFF, le repos minimal est recompté prudemment.
+Valeurs initiales : confirmation 30 s, arrêt après disparition de la demande 30 s, délai minimal avant relance du chauffage 180 s. La réévaluation est périodique toutes les 15 s et réagit aux changements d’état. Adapter ces valeurs à la chaudière. Au redémarrage avec relais OFF, ce délai minimal avant relance est recompté prudemment.
 
 Les consignes sont envoyées en arrière-plan, avec quatre envois simultanés au maximum. Une vanne n’est relancée qu’après 30 s si sa consigne n’est pas confirmée. L’arrêt général du relais n’attend pas cette file. Un ordre Zigbee déjà transmis ne peut pas être rappelé.
 

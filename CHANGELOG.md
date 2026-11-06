@@ -1,5 +1,10 @@
 # Historique
 
+## 3.2.6 — 6 novembre 2026
+
+- Renomme « Repos minimal du relais » en « Délai minimal avant relance du chauffage ».
+
+
 ## 3.2.5 — 6 novembre 2026
 
 - Renomme le délai de surveillance en « depuis la dernière communication avec la vanne ».
