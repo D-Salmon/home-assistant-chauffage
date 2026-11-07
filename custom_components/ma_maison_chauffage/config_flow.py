@@ -33,8 +33,13 @@ class HeatingOptionsFlow(config_entries.OptionsFlow):
                 {
                     vol.Required(
                         "house_name",
-                        default=self.config_entry.options.get("house_name", "Ma maison"),
+                        default=(
+                            self.hass.data.get(DOMAIN).data["settings"]["house_name"]
+                            if self.hass.data.get(DOMAIN)
+                            else self.config_entry.options.get("house_name", "Ma maison")
+                        ),
                     ): vol.All(str, vol.Length(max=80)),
                 }
             ),
         )
+

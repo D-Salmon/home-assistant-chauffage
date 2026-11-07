@@ -1,12 +1,13 @@
 # Ma maison — Chauffage Home Assistant
 
-**Version 3.2.9 : nom de maison personnalisable, état des vannes animé, saisie simplifiée des horaires et URL permanente de la carte.**
+**Version 3.2.10 : nom de maison modifiable dans la carte et bandeau rouge lorsque la chaudière est active.**
 
 Une intégration locale conserve une seule liste de pièces pour l’affichage, les consignes et la coordination chaudière. Le nombre de vannes n’est plus fixé à huit. Interface mobile inspirée de Home + Control pour des TRV Zigbee2MQTT et un relais chaudière à contact sec.
 
 ## Fonctionnalités
 
 - Quatre températures indépendantes par pièce : **Confort, Éco, Nuit et Absent**.
+- **Réglages → Nom de la maison** : le bandeau d’accueil reprend le nom enregistré. Il devient rouge quand le relais chaudière est allumé et revient au bleu à l’arrêt.
 - **Pièces → Ajouter une vanne** : choisir une entité climate et le nom de la pièce. Ajout/retrait pris en compte sans redémarrage.
 - Mode **Planning** ou profil permanent pour chaque pièce, notamment Absent pour une chambre peu occupée.
 - Consigne manuelle temporaire avec durée réglable et retour au planning ; échéance conservée après redémarrage.

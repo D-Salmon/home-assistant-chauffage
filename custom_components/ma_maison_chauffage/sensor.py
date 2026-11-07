@@ -26,7 +26,7 @@ class HeatingRegistry(SensorEntity):
 
     @property
     def extra_state_attributes(self):
-        return {"configuration": deepcopy(self.runtime.data), "status": deepcopy(self.runtime.status), "house_name": self.runtime.house_name, "version": "3.2.9", "integration": DOMAIN}
+        return {"configuration": deepcopy(self.runtime.data), "status": deepcopy(self.runtime.status), "house_name": self.runtime.data["settings"]["house_name"], "version": "3.2.10", "integration": DOMAIN}
 
     async def async_added_to_hass(self):
         self.async_on_remove(async_dispatcher_connect(self.hass, SIGNAL, self.updated))
@@ -34,3 +34,4 @@ class HeatingRegistry(SensorEntity):
     @callback
     def updated(self):
         self.async_write_ha_state()
+
