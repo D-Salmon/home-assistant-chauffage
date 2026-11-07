@@ -7,7 +7,7 @@
   const temp=x=>typeof x==='number'&&Number.isFinite(x)?x.toLocaleString('fr-FR',{maximumFractionDigits:1})+' °C':'—';
   class MaMaisonCard extends HTMLElement {
     static getStubConfig(){return {type:'custom:ma-maison-chauffage-card'};}
-    constructor(){super();this.attachShadow({mode:'open'});this.view='home';this.selected=null;this.dirty=false;this.busy=false;this.message='';}
+    constructor(){super();this.attachShadow({mode:'open'});this.view='home';this.selected=null;this.dirty=false;this.busy=false;this.message='';this.pendingSettings=null;}
     setConfig(config){this.config=config;this.render();}
     set hass(hass){
       this._hass=hass;this.readState(Object.values(hass.states));
@@ -17,7 +17,12 @@
     }
     readState(states){
       const entry=this.config?.entity?states.find(s=>s.entity_id===this.config.entity):states.find(s=>s.attributes?.integration===DOMAIN);
-      this.model=entry?.attributes?.configuration;this.status=entry?.attributes?.status||{};this.homeName=this.model?.settings?.house_name||entry?.attributes?.house_name||'Ma maison';
+      const incoming=entry?.attributes?.configuration;
+      if(this.pendingSettings&&incoming&&incoming.revision>=this.pendingSettings.revision)this.pendingSettings=null;
+      this.model=this.pendingSettings&&incoming
+        ?{...incoming,revision:this.pendingSettings.revision,settings:{...incoming.settings,...this.pendingSettings.payload}}
+        :incoming;
+      this.status=entry?.attributes?.status||{};this.homeName=this.model?.settings?.house_name||entry?.attributes?.house_name||'Ma maison';
     }
     getCardSize(){return Math.max(5,(this.model?.rooms.length||0)+3);}
     async refresh(){this.readState(await this._hass.callWS({type:'get_states'}));}
@@ -27,6 +32,7 @@
       this.busy=true;this.shadowRoot.querySelectorAll('button').forEach(b=>b.disabled=true);
       try{
         await this._hass.callService(DOMAIN,'command',{operation,payload,revision});
+        if(operation==='settings')this.pendingSettings={revision:revision+1,payload};
         this.dirty=false;await this.refresh();if(nextView)this.view=nextView;if(operation==='remove_room')this.pendingRemove=null;
         this.message='Modification enregistrée.';this.busy=false;this.render();
       }catch(e){this.busy=false;this.shadowRoot.querySelectorAll('button').forEach(b=>b.disabled=false);this.note(e.message||String(e));}

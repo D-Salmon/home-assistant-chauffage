@@ -1,5 +1,9 @@
 # Historique
 
+## 3.2.13 — 7 novembre 2026
+
+- Met à jour immédiatement l’accueil après l’enregistrement des réglages, notamment du capteur extérieur, sans recharger la page.
+
 ## 3.2.12 — 7 novembre 2026
 
 - Crée ou actualise automatiquement l’URL de la ressource Lovelace avec la version installée après redémarrage, pour éviter le cache d’une ancienne carte.
