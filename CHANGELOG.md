@@ -1,5 +1,10 @@
 # Historique
 
+## 3.2.12 — 7 novembre 2026
+
+- Crée ou actualise automatiquement l’URL de la ressource Lovelace avec la version installée après redémarrage, pour éviter le cache d’une ancienne carte.
+- Préserve les autres ressources et laisse les configurations YAML ou anciennes ressources ambiguës à l’administrateur.
+
 ## 3.2.11 — 7 novembre 2026
 
 - Réorganise l’accueil mobile autour d’un grand bandeau, de l’état de la chaudière et d’une liste de pièces plus lisible.
