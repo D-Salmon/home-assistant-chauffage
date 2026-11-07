@@ -1,5 +1,10 @@
 # Historique
 
+## 3.2.11 — 7 novembre 2026
+
+- Réorganise l’accueil mobile autour d’un grand bandeau, de l’état de la chaudière et d’une liste de pièces plus lisible.
+- Conserve le changement bleu/rouge du bandeau selon l’état du relais.
+
 ## 3.2.10 — 7 novembre 2026
 
 - Permet de modifier le nom de maison dans les réglages de la carte et le conserve après redémarrage.

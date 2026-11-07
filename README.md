@@ -1,6 +1,6 @@
 # Ma maison — Chauffage Home Assistant
 
-**Version 3.2.10 : nom de maison modifiable dans la carte et bandeau rouge lorsque la chaudière est active.**
+**Version 3.2.11 : accueil mobile réorganisé, nom de maison modifiable et bandeau rouge lorsque la chaudière est active.**
 
 Une intégration locale conserve une seule liste de pièces pour l’affichage, les consignes et la coordination chaudière. Le nombre de vannes n’est plus fixé à huit. Interface mobile inspirée de Home + Control pour des TRV Zigbee2MQTT et un relais chaudière à contact sec.
 
