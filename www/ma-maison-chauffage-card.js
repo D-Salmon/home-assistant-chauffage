@@ -13,6 +13,20 @@
       this._hass=hass;this.readState(Object.values(hass.states));
       const planner=this.shadowRoot.querySelector('chauffage-planning-card');
       if(this.view==='planning'&&planner){planner.hass=hass;return;}
+      if(this.view==='room'){
+        const room=this.model?.rooms.find(r=>r.id===this.selected);
+        const live=(this.status.rooms||[]).find(r=>r.id===this.selected)||{};
+        const q=s=>this.shadowRoot.querySelector(s);
+        if(room&&q('.room-detail-temperature strong')){
+          const heating=live.hvac_action==='heating';
+          q('.room-detail-temperature strong').textContent=temp(live.current_temperature);
+          q('.room-detail-target strong').textContent=temp(live.target??live.temperature);
+          q('.room-detail .hero-status strong').textContent=live.paused?'Chauffage en pause':live.fault||(!this.model.settings.enabled?'Chauffage arrêté':heating?'Chauffage en cours':'Chauffage en attente');
+          q('.room-detail .hero-status small').textContent=MODES[live.profile]||live.profile||MODES[room.mode]||room.mode;
+          q('.room-detail .hero').classList.toggle('heating',heating);
+        }
+        return;
+      }
       if(!this.busy&&!this.dirty&&!['edit','room','settings'].includes(this.view))this.render();
     }
     readState(states){
@@ -64,7 +78,7 @@
           </header>
           <div class="room-detail-body">
             <form id="override-form" class="room-detail-override"><h3>Consigne temporaire</h3><p>Choisissez une température et une durée pour cette pièce.</p><div class="profiles"><div><label for="override-temp">Température (°C)</label><input id="override-temp" name="temperature" type="number" min="5" max="25" step="0.5" value="${room.override?.temperature??room.temperatures.confort}" required></div><div><label for="hours">Durée (h)</label><input id="hours" name="hours" type="number" min="0.5" max="12" step="0.5" value="3" required></div></div><div class="actions"><button class="primary" type="submit" ${canOverride?'':'disabled'}>Appliquer</button>${room.override?'<button type="button" id="resume">Reprendre le planning</button>':''}</div>${room.override?`<p class="override-until">Consigne active jusqu’au ${esc(new Date(room.override.until*1000).toLocaleString('fr-FR'))}.</p>`:''}${canOverride?'':'<p class="override-unavailable">Pour appliquer une consigne temporaire, activez le chauffage et le mode Planning, hors absence maison.</p>'}</form>
-            <form id="room-form" class="room-detail-profiles"><h3>Mode et températures</h3><label for="mode">Mode de la pièce</label><select id="mode" name="mode">${Object.entries(MODES).map(([v,n])=>`<option value="${v}" ${room.mode===v?'selected':''}>${n}</option>`).join('')}</select><div class="profiles">${this.profileInputs(room)}</div><details class="help"><summary aria-label="Afficher l’explication">?</summary><p class="hint">Planning suit les horaires. Un profil fixe reste actif jusqu’à votre changement. Absent permet de garder une chambre inoccupée à une température plus basse.</p></details><div class="actions"><button class="primary" type="submit">Enregistrer</button></div></form>
+            <form id="room-form" class="room-detail-profiles"><h3>Mode et températures</h3><label for="mode">Mode de la pièce</label><select id="mode" name="mode">${Object.entries(MODES).map(([v,n])=>`<option value="${v}" ${room.mode===v?'selected':''}>${n}</option>`).join('')}</select><div class="profiles">${this.profileInputs(room)}</div><details class="help"><summary aria-label="Afficher l’explication">?</summary><p class="hint">Planning suit les horaires. Un profil fixe reste actif jusqu’à votre changement. Absent permet de garder une chambre inoccupée à une température plus basse.</p></details><div class="actions"><button class="primary" type="submit">Enregistrer</button><button type="button" id="cancel">Annuler</button></div></form>
           </div></section>`;
       }
       return `<form id="room-form"><h2>${editing?(room.id?'Modifier la pièce':'Ajouter une pièce'):esc(room.name)}</h2>

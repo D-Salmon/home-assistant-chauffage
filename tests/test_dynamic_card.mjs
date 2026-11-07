@@ -62,6 +62,8 @@ assert.equal(q('.room-detail-temperature strong').textContent,'19 °C');
 assert.equal(q('.room-detail-target strong').textContent,'20 °C');
 assert.equal(q('.room-detail-override h3').textContent,'Consigne temporaire');
 assert.equal(q('.room-detail-override button[type="submit"]').disabled,true);
+hass.states['sensor.registry'].attributes.status.rooms[0].current_temperature=21;card.hass=hass;
+assert.equal(q('.room-detail-temperature strong').textContent,'21 °C');
 const beforeTemperatureClick=calls.length;q('#absent').click();assert.equal(calls.length,beforeTemperatureClick,'Le champ température Absent ne doit pas activer une absence maison.');
 input('#eco','16');input('#mode','planning');submit('#room-form');await settle();assert.equal(model.rooms[0].temperatures.eco,16);
 model.settings.enabled=true;hass.states=states();card.hass=hass;
@@ -72,6 +74,7 @@ assert.deepEqual(calls.at(-1).payload,{id:model.rooms[0].id,temperature:21,hours
 assert.equal(q('.room-detail .override-until').textContent.includes('Consigne active jusqu’au'),true);
 q('#resume').click();await settle();assert.equal(model.rooms[0].override,null);
 q('#room-back').click();assert.equal(all('[data-room]').length,1);
+q('[data-room]').click();input('#eco','15');q('#cancel').click();assert.equal(all('[data-room]').length,1);
 
 // The rendered list follows the registry, not eight hard-coded rows.
 for(let i=1;i<20;i++)model.rooms.push({id:'extra_'+i,name:'Room '+i,entity:'climate.valve_'+i,temperatures:{confort:20,eco:17,nuit:17,absent:14},mode:'planning',last_seen:'',override:null});
