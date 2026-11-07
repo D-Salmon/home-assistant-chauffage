@@ -88,10 +88,10 @@ def change(data, operation, payload, now):
         if operation == "remove_room":
             rooms.remove(room)
         elif operation == "resume":
-            room.update(mode="planning", override=None)
+            room["override"] = None
         else:
-            if not settings["enabled"] or settings["absent"] or room["mode"] != "planning":
-                raise ValueError("Activez le chauffage et le mode Planning, hors absence maison.")
+            if not settings["enabled"] or settings["absent"]:
+                raise ValueError("Activez le chauffage et quittez l’absence maison.")
             room["override"] = {"temperature": temperature(payload.get("temperature")),
                                 "until": now + number(payload.get("hours"), .5, 12) * 3600}
     elif operation == "settings":
@@ -122,9 +122,13 @@ def change(data, operation, payload, now):
             seen.add(s["entity"])
         if settings["active_schedule"] and settings["active_schedule"] not in seen:
             raise ValueError("Le planning actif doit appartenir à la liste.")
-        if previous["absent"] != settings["absent"] or previous["active_schedule"] != settings["active_schedule"]:
+        if previous["absent"] != settings["absent"]:
             for room in rooms:
                 room["override"] = None
+        elif previous["active_schedule"] != settings["active_schedule"]:
+            for room in rooms:
+                if room["mode"] == "planning":
+                    room["override"] = None
     elif operation == "retry":
         pass
     else:
@@ -139,10 +143,10 @@ def target(room, settings, schedule, now):
         return None, "arrêt"
     if settings["absent"]:
         profile = "absent"
-    elif room["mode"] != "planning":
-        profile = room["mode"]
     elif room.get("override") and room["override"]["until"] > now:
         return room["override"]["temperature"], "manuel"
+    elif room["mode"] != "planning":
+        profile = room["mode"]
     elif schedule and schedule["state"] in ("on", "off"):
         profile = (schedule.get("attributes", {}).get("profil") or "confort") if schedule["state"] == "on" else "eco"
     else:
@@ -181,4 +185,3 @@ def decide(settings, count, heating, faults, actual, old, now, reset=False):
     return {"wanted": wanted, "since": since, "off_since": off_since, "actual": actual,
             "desired": desired, "attempts": attempts + int(send),
             "last_attempt": now if send else last}, send
-

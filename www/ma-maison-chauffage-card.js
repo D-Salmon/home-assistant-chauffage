@@ -20,6 +20,7 @@
       if(this.view==='room'){
         if(!this.busy&&!this.dirty&&this.model?.revision!==previousRevision){this.render();return;}
         const room=this.model?.rooms.find(r=>r.id===this.selected);
+        if(!this.busy&&!this.dirty&&room?.override?.until<=Date.now()/1000&&this.shadowRoot.querySelector('#resume')){this.render();return;}
         const live=(this.status.rooms||[]).find(r=>r.id===this.selected)||{};
         const q=s=>this.shadowRoot.querySelector(s);
         if(room&&q('.room-detail-temperature strong')){
@@ -71,8 +72,10 @@
       if(!editing){
         const live=(this.status.rooms||[]).find(r=>r.id===room.id)||{};
         const heating=live.hvac_action==='heating';
-        const canOverride=this.model.settings.enabled&&!this.model.settings.absent&&room.mode==='planning';
-        const overrideValue=Number(room.override?.temperature??room.temperatures.confort);
+        const canOverride=this.model.settings.enabled&&!this.model.settings.absent;
+        const activeOverride=room.override?.until>Date.now()/1000?room.override:null;
+        const overrideValue=Number(activeOverride?.temperature??live.target??room.temperatures[room.mode]??room.temperatures.confort);
+        const resumeLabel=room.mode==='planning'?'Reprendre le planning':`Reprendre le mode ${PROFILES[room.mode]}`;
         const [thumbX,thumbY]=dialPoint(overrideValue);
         const state=live.paused?'Chauffage en pause':live.fault||(!this.model.settings.enabled?'Chauffage arrêté':heating?'Chauffage en cours':'Chauffage en attente');
         const profile=MODES[live.profile]||live.profile||MODES[room.mode]||room.mode;
@@ -91,7 +94,7 @@
                 <circle class="dial-thumb" cx="${thumbX}" cy="${thumbY}" r="10"></circle>
               </svg><div class="dial-center"><div class="dial-adjust"><button type="button" id="override-minus" aria-label="Diminuer la consigne temporaire de 0,5 °C" ${!canOverride||overrideValue<=5?'disabled':''}>−</button><strong class="dial-readout" aria-live="polite">${temp(overrideValue)}</strong><button type="button" id="override-plus" aria-label="Augmenter la consigne temporaire de 0,5 °C" ${!canOverride||overrideValue>=25?'disabled':''}>+</button></div><span class="dial-caption">Consigne souhaitée</span></div><div class="dial-limits"><span>5 °C</span><span>25 °C</span></div></div>
               <div class="profiles override-fields"><div><label for="override-temp">Température précise (°C)</label><input id="override-temp" name="temperature" type="number" min="5" max="25" step="0.5" value="${overrideValue}" ${canOverride?'':'disabled'} required></div><div><label for="hours">Durée (h)</label><input id="hours" name="hours" type="number" min="0.5" max="12" step="0.5" value="3" ${canOverride?'':'disabled'} required></div></div>
-              <div class="actions"><button class="primary" type="submit" ${canOverride?'':'disabled'}>Appliquer</button>${room.override?'<button type="button" id="resume">Reprendre le planning</button>':''}</div>${room.override?`<p class="override-until">Consigne active jusqu’au ${esc(new Date(room.override.until*1000).toLocaleString('fr-FR'))}.</p>`:''}${canOverride?'':'<p class="override-unavailable">Pour appliquer une consigne temporaire, activez le chauffage et le mode Planning, hors absence maison.</p>'}</form>
+              <div class="actions"><button class="primary" type="submit" ${canOverride?'':'disabled'}>Appliquer</button>${activeOverride?`<button type="button" id="resume">${resumeLabel}</button>`:''}</div>${activeOverride?`<p class="override-until">Consigne active jusqu’au ${esc(new Date(activeOverride.until*1000).toLocaleString('fr-FR'))}.</p>`:''}${canOverride?'':'<p class="override-unavailable">Pour appliquer une consigne temporaire, activez le chauffage et quittez l’absence maison.</p>'}</form>
             <form id="room-form" class="room-detail-profiles"><h3>Mode et températures</h3><label for="mode">Mode de la pièce</label><select id="mode" name="mode">${Object.entries(MODES).map(([v,n])=>`<option value="${v}" ${room.mode===v?'selected':''}>${n}</option>`).join('')}</select><div class="profiles">${this.profileInputs(room)}</div><details class="help"><summary aria-label="Afficher l’explication">?</summary><p class="hint">Planning suit les horaires. Un profil fixe reste actif jusqu’à votre changement. Absent permet de garder une chambre inoccupée à une température plus basse.</p></details><div class="actions"><button class="primary" type="submit">Enregistrer</button><button type="button" id="cancel">Annuler</button></div></form>
           </div></section>`;
       }

@@ -30,7 +30,7 @@ const hass={
     }else if(data.operation==='remove_room')model.rooms=model.rooms.filter(r=>r.id!==p.id);
     else if(data.operation==='settings')model.settings={...model.settings,...p};
     else if(data.operation==='override')model.rooms.find(r=>r.id===p.id).override={temperature:p.temperature,until:Date.now()/1000+p.hours*3600};
-    else if(data.operation==='resume'){const r=model.rooms.find(r=>r.id===p.id);r.mode='planning';r.override=null;}
+    else if(data.operation==='resume')model.rooms.find(r=>r.id===p.id).override=null;
     model.revision++;
   }
 };
@@ -85,6 +85,14 @@ assert.equal(q('.room-detail .override-until').textContent.includes('Consigne ac
 q('#resume').click();await settle();assert.equal(model.rooms[0].override,null);
 q('#room-back').click();assert.equal(all('[data-room]').length,1);
 q('[data-room]').click();input('#eco','15');q('#cancel').click();assert.equal(all('[data-room]').length,1);
+q('[data-room]').click();input('#mode','confort');submit('#room-form');await settle();
+q('[data-nav="home"]').click();q('[data-room]').click();
+assert.equal(q('.room-detail-override button[type="submit"]').disabled,false);
+input('#override-temp','22');submit('#override-form');await settle();
+assert.equal(model.rooms[0].mode,'confort');
+assert.equal(q('#resume').textContent,'Reprendre le mode Confort');
+q('#resume').click();await settle();assert.equal(model.rooms[0].mode,'confort');
+q('#room-back').click();
 
 // The rendered list follows the registry, not eight hard-coded rows.
 for(let i=1;i<20;i++)model.rooms.push({id:'extra_'+i,name:'Room '+i,entity:'climate.valve_'+i,temperatures:{confort:20,eco:17,nuit:17,absent:14},mode:'planning',last_seen:'',override:null});

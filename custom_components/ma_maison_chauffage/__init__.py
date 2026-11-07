@@ -213,7 +213,9 @@ class HeatingRuntime:
         settings = self.data["settings"]
         value, profile = target(room, settings, schedule, now)
         if not (settings["enabled"] and settings["anticipation_enabled"] and not settings["absent"]
-                and room["mode"] == "planning" and not room.get("override") and value is not None):
+                and room["mode"] == "planning"
+                and not (room.get("override") and room["override"]["until"] > now)
+                and value is not None):
             return value, profile
         next_time, next_profile = upcoming_block(self.schedule_data, dt_util.now())
         if next_time is None:
@@ -423,4 +425,3 @@ class HeatingRuntime:
                 except Exception:
                     _LOGGER.debug("Notification indisponible", exc_info=True)
             self.publish()
-
