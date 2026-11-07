@@ -62,6 +62,7 @@ assert.equal(q('.room-detail-temperature strong').textContent,'19 °C');
 assert.equal(q('.room-detail-target strong').textContent,'20 °C');
 assert.equal(q('.room-detail-override h3').textContent,'Consigne temporaire');
 assert.equal(q('.room-detail-override button[type="submit"]').disabled,true);
+assert.equal(q('#temperature-dial').getAttribute('aria-disabled'),'true');
 hass.states['sensor.registry'].attributes.status.rooms[0].current_temperature=21;card.hass=hass;
 assert.equal(q('.room-detail-temperature strong').textContent,'21 °C');
 const beforeTemperatureClick=calls.length;q('#absent').click();assert.equal(calls.length,beforeTemperatureClick,'Le champ température Absent ne doit pas activer une absence maison.');
@@ -69,6 +70,10 @@ input('#eco','16');input('#mode','planning');submit('#room-form');await settle()
 model.settings.enabled=true;hass.states=states();card.hass=hass;
 q('[data-nav="home"]').click();q('[data-room]').click();
 assert.equal(q('.room-detail-override button[type="submit"]').disabled,false);
+assert.equal(q('#temperature-dial').getAttribute('aria-disabled'),'false');
+q('#temperature-dial').dispatchEvent(new window.KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true}));
+assert.equal(q('#override-temp').value,'20.5');
+assert.equal(q('#temperature-dial').getAttribute('aria-valuenow'),'20.5');
 input('#override-temp','21');input('#hours','2');submit('#override-form');await settle();
 assert.deepEqual(calls.at(-1).payload,{id:model.rooms[0].id,temperature:21,hours:2});
 assert.equal(q('.room-detail .override-until').textContent.includes('Consigne active jusqu’au'),true);
