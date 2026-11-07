@@ -1,6 +1,6 @@
 # Ma maison — Chauffage Home Assistant
 
-**Version 3.2.13 : le capteur extérieur choisi s’affiche immédiatement après enregistrement.**
+**Version 3.2.13 : le capteur extérieur s’affiche immédiatement et les boutons de navigation sont plus lisibles.**
 
 Une intégration locale conserve une seule liste de pièces pour l’affichage, les consignes et la coordination chaudière. Le nombre de vannes n’est plus fixé à huit. Interface mobile inspirée de Home + Control pour des TRV Zigbee2MQTT et un relais chaudière à contact sec.
 

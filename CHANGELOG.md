@@ -3,6 +3,7 @@
 ## 3.2.13 — 7 novembre 2026
 
 - Met à jour immédiatement l’accueil après l’enregistrement des réglages, notamment du capteur extérieur, sans recharger la page.
+- Agrandit le texte des quatre boutons de navigation de la carte.
 
 ## 3.2.12 — 7 novembre 2026
 
