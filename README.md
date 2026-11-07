@@ -7,6 +7,7 @@ Une intégration locale conserve une seule liste de pièces pour l’affichage, 
 ## Fonctionnalités
 
 - Quatre températures indépendantes par pièce : **Confort, Éco, Nuit et Absent**.
+- **Réglages → Capteur extérieur** : si un capteur °C est choisi et disponible, sa température apparaît à côté de l’état du chauffage sur l’accueil.
 - **Réglages → Nom de la maison** : le bandeau d’accueil reprend le nom enregistré. Il devient rouge quand le relais chaudière est allumé et revient au bleu à l’arrêt.
 - **Pièces → Ajouter une vanne** : choisir une entité climate et le nom de la pièce. Ajout/retrait pris en compte sans redémarrage.
 - Mode **Planning** ou profil permanent pour chaque pièce, notamment Absent pour une chambre peu occupée.
