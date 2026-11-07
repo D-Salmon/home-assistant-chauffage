@@ -10,10 +10,12 @@
     constructor(){super();this.attachShadow({mode:'open'});this.view='home';this.selected=null;this.dirty=false;this.busy=false;this.message='';this.pendingSettings=null;}
     setConfig(config){this.config=config;this.render();}
     set hass(hass){
+      const previousRevision=this.model?.revision;
       this._hass=hass;this.readState(Object.values(hass.states));
       const planner=this.shadowRoot.querySelector('chauffage-planning-card');
       if(this.view==='planning'&&planner){planner.hass=hass;return;}
       if(this.view==='room'){
+        if(!this.busy&&!this.dirty&&this.model?.revision!==previousRevision){this.render();return;}
         const room=this.model?.rooms.find(r=>r.id===this.selected);
         const live=(this.status.rooms||[]).find(r=>r.id===this.selected)||{};
         const q=s=>this.shadowRoot.querySelector(s);
