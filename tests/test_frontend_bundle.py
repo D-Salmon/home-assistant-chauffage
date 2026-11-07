@@ -19,6 +19,7 @@ def stub(name, **members):
 stub("homeassistant")
 stub("homeassistant.components")
 stub("homeassistant.components.http", StaticPathConfig=lambda url, path, cache: (url, path, cache))
+stub("homeassistant.components.lovelace", LOVELACE_DATA="lovelace", MODE_STORAGE="storage")
 spec = importlib.util.spec_from_file_location("frontend_bundle", COMPONENT / "frontend.py")
 frontend = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(frontend)
@@ -36,6 +37,67 @@ class BundleTests(unittest.TestCase):
             self.assertEqual(bootstrap.count("?v=" + manifest["version"]), 2)
         self.assertTrue((ROOT / "hacs.json").exists())
         self.assertEqual([p.name for p in (ROOT / "custom_components").iterdir() if p.is_dir()], ["ma_maison_chauffage"])
+
+
+class FakeResources:
+    def __init__(self, items=()):
+        self.stored = [dict(item) for item in items]
+        self.items = []
+        self.loaded = False
+        self.updates = []
+        self.created = []
+
+    async def async_get_info(self):
+        self.loaded = True
+        self.items = self.stored
+        return {"resources": len(self.items)}
+
+    def async_items(self):
+        return self.items
+
+    async def async_update_item(self, item_id, updates):
+        assert self.loaded
+        self.updates.append((item_id, updates))
+        item = next(item for item in self.items if item["id"] == item_id)
+        item.update(url=updates["url"], type=updates["res_type"])
+        return item
+
+    async def async_create_item(self, data):
+        assert self.loaded
+        self.created.append(data)
+        item = {"id": "new", "url": data["url"], "type": data["res_type"]}
+        self.items.append(item)
+        return item
+
+
+class ResourceTests(unittest.IsolatedAsyncioTestCase):
+    async def test_updates_only_our_resource_and_is_idempotent(self):
+        resources = FakeResources([
+            {"id": "ours", "url": frontend.MODULE_URL + "?v=3.2.9", "type": "module"},
+            {"id": "other", "url": "/other-card.js", "type": "module"},
+        ])
+        hass = SimpleNamespace(data={"lovelace": SimpleNamespace(resource_mode="storage", resources=resources)})
+        await frontend.async_sync_resource(hass)
+        await frontend.async_sync_resource(hass)
+        self.assertEqual(resources.updates, [("ours", {"url": frontend.RESOURCE_URL, "res_type": "module"})])
+        self.assertEqual(resources.items[1]["url"], "/other-card.js")
+        self.assertFalse(resources.created)
+
+    async def test_creates_only_after_loading_collection(self):
+        resources = FakeResources()
+        hass = SimpleNamespace(data={"lovelace": SimpleNamespace(resource_mode="storage", resources=resources)})
+        await frontend.async_sync_resource(hass)
+        self.assertEqual(resources.created, [{"url": frontend.RESOURCE_URL, "res_type": "module"}])
+
+    async def test_yaml_and_legacy_resources_are_left_untouched(self):
+        resources = FakeResources([{"id": "old", "url": "/local/ma-maison-chauffage-card.js", "type": "module"}])
+        hass = SimpleNamespace(data={"lovelace": SimpleNamespace(resource_mode="storage", resources=resources)})
+        await frontend.async_sync_resource(hass)
+        self.assertFalse(resources.created)
+        self.assertFalse(resources.updates)
+        hass.data["lovelace"].resource_mode = "yaml"
+        await frontend.async_sync_resource(hass)
+        self.assertFalse(resources.created)
 
 
 class RegistrationTests(unittest.IsolatedAsyncioTestCase):
@@ -60,3 +122,4 @@ class RegistrationTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+

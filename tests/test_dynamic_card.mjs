@@ -10,7 +10,8 @@ function states(){
   const result={
     'sensor.registry':{entity_id:'sensor.registry',attributes:{integration:'ma_maison_chauffage',configuration:clone(model),status:{rooms:model.rooms.map(r=>({id:r.id,current_temperature:19,temperature:20,profile:r.mode})),relay:'off',faults:[]}}},
     'switch.boiler':{entity_id:'switch.boiler',attributes:{friendly_name:'Chaudière'}},
-    'schedule.week':{entity_id:'schedule.week',attributes:{friendly_name:'Semaine'}}
+    'schedule.week':{entity_id:'schedule.week',attributes:{friendly_name:'Semaine'}},
+    'sensor.outdoor':{entity_id:'sensor.outdoor',state:'8.5',attributes:{friendly_name:'Extérieur',unit_of_measurement:'°C'}}
   };
   for(let i=0;i<22;i++)result['climate.valve_'+i]={entity_id:'climate.valve_'+i,attributes:{friendly_name:'Vanne '+i}};
   return result;
@@ -42,6 +43,13 @@ const all=s=>[...card.shadowRoot.querySelectorAll(s)];
 const settle=async()=>{for(let i=0;i<4;i++)await new Promise(r=>setImmediate(r));assert.equal(card.busy,false);};
 function submit(selector){q(selector).dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));}
 function input(selector,value){q(selector).value=value;q(selector).dispatchEvent(new window.Event('input',{bubbles:true}));}
+
+assert.equal(all('.outdoor-tile').length,0);
+model.settings.outdoor_sensor='sensor.outdoor';hass.states=states();card.hass=hass;
+assert.equal(q('.outdoor-tile strong').textContent,'8,5 °C');
+hass.states['sensor.outdoor'].state='unavailable';card.hass=hass;
+assert.equal(all('.outdoor-tile').length,0);
+model.settings.outdoor_sensor='';hass.states=states();card.hass=hass;
 
 q('[data-nav="manage"]').click();q('#add').click();
 input('#room-name','Chambre enfant');input('#room-entity','climate.valve_0');
