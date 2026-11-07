@@ -24,7 +24,7 @@
         const live=(this.status.rooms||[]).find(r=>r.id===this.selected)||{};
         const q=s=>this.shadowRoot.querySelector(s);
         if(room&&q('.room-detail-temperature strong')){
-          const heating=live.hvac_action==='heating';
+          const heating=this.relayState()==='on'&&live.hvac_action==='heating';
           q('.room-detail-temperature strong').textContent=temp(live.current_temperature);
           q('.room-detail-target strong').textContent=temp(live.target??live.temperature);
           q('.room-detail .hero-status strong').textContent=live.paused?'Chauffage en pause':live.fault||(!this.model.settings.enabled?'Chauffage arrêté':heating?'Chauffage en cours':'Chauffage en attente');
@@ -44,6 +44,7 @@
         :incoming;
       this.status=entry?.attributes?.status||{};this.homeName=this.model?.settings?.house_name||entry?.attributes?.house_name||'Ma maison';
     }
+    relayState(){return this._hass?.states?.[this.model?.settings?.relay]?.state??this.status?.relay;}
     getCardSize(){return Math.max(5,(this.model?.rooms.length||0)+3);}
     async refresh(){this.readState(await this._hass.callWS({type:'get_states'}));}
     note(message){this.message=message;const node=this.shadowRoot.querySelector('#message');if(node)node.textContent=message;}
@@ -71,7 +72,7 @@
       this.formRevision=this.model.revision;
       if(!editing){
         const live=(this.status.rooms||[]).find(r=>r.id===room.id)||{};
-        const heating=live.hvac_action==='heating';
+        const heating=this.relayState()==='on'&&live.hvac_action==='heating';
         const canOverride=this.model.settings.enabled&&!this.model.settings.absent;
         const activeOverride=room.override?.until>Date.now()/1000?room.override:null;
         const overrideValue=Number(activeOverride?.temperature??live.target??room.temperatures[room.mode]??room.temperatures.confort);
@@ -111,20 +112,21 @@
       if(!this.config)return;
       if(!this.model){this.shadowRoot.innerHTML='<ha-card style="padding:24px">Ajoutez l’intégration « Ma maison - Chauffage » dans Paramètres → Appareils et services, puis rechargez cette carte.</ha-card>';return;}
       const m=this.model,s=m.settings,rooms=m.rooms,details=new Map((this.status.rooms||[]).map(r=>[r.id,r]));
+      const relayState=this.relayState();
       let content='';
       if(this.view==='home'){
         const heatingCount=Number(this.status.heating_count)||0;
         const outdoorState=s.outdoor_sensor?this._hass.states[s.outdoor_sensor]:null;
         const outdoorValue=outdoorState&&outdoorState.state!==''?Number(outdoorState.state):NaN;
         const outdoorTemp=Number.isFinite(outdoorValue)?outdoorValue:null;
-        const headline=this.status.relay==='on'&&heatingCount>0?`Chauffage demandé par ${heatingCount} ${heatingCount===1?'vanne':'vannes'}`:!s.enabled?'Chauffage arrêté':s.absent?'Maison absente':esc(s.schedules.find(p=>p.entity===s.active_schedule)?.name||'Choisir un planning');
+        const headline=relayState==='on'&&heatingCount>0?`Chauffage demandé par ${heatingCount} ${heatingCount===1?'vanne':'vannes'}`:!s.enabled?'Chauffage arrêté':s.absent?'Maison absente':esc(s.schedules.find(p=>p.entity===s.active_schedule)?.name||'Choisir un planning');
         content=`<section class="home-shell">
-          <header class="hero ${this.status.relay==='on'?'heating':''}">
+          <header class="hero ${relayState==='on'?'heating':''}">
             <div class="hero-title"><span class="hero-house" aria-hidden="true">⌂</span><h2>${esc(this.homeName)}</h2></div>
-            <div class="hero-summary ${outdoorTemp!==null?'has-outdoor':''}"><div class="hero-status"><span class="status-icon" aria-hidden="true">♨</span><div><strong>${headline}</strong><small>${this.status.relay==='on'?'Chaudière en marche':this.status.relay==='off'?'Chaudière arrêtée':'Relais indisponible'} · ${rooms.length} pièce(s)</small></div></div>${outdoorTemp!==null?`<div class="outdoor-tile" aria-label="Température extérieure ${temp(outdoorTemp)}"><ha-icon icon="mdi:thermometer" aria-hidden="true"></ha-icon><span>Extérieur</span><strong>${temp(outdoorTemp)}</strong></div>`:''}</div>
+            <div class="hero-summary ${outdoorTemp!==null?'has-outdoor':''}"><div class="hero-status"><span class="status-icon" aria-hidden="true">♨</span><div><strong>${headline}</strong><small>${relayState==='on'?'Chaudière en marche':relayState==='off'?'Chaudière arrêtée':'Relais indisponible'} · ${rooms.length} pièce(s)</small></div></div>${outdoorTemp!==null?`<div class="outdoor-tile" aria-label="Température extérieure ${temp(outdoorTemp)}"><ha-icon icon="mdi:thermometer" aria-hidden="true"></ha-icon><span>Extérieur</span><strong>${temp(outdoorTemp)}</strong></div>`:''}</div>
             <div class="picker"><div><label for="active-plan">Mon planning</label><select id="active-plan"><option value="">Sans planning</option>${s.schedules.map(p=>`<option value="${esc(p.entity)}" ${p.entity===s.active_schedule?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div><button id="absent" type="button" aria-pressed="${s.absent}">Absent${s.absent?' ✓':''}</button></div>
           </header>
-          <section class="rooms-panel"><h3>Pièces</h3>${rooms.map(r=>{const live=details.get(r.id)||{};const isHeating=live.hvac_action==='heating';return `<button class="room" data-room="${r.id}"><span class="room-icon ${isHeating?'heating':''}" role="img" aria-label="${isHeating?'La vanne demande le chauffage':'La vanne ne chauffe pas'}"><ha-icon icon="mdi:radiator"></ha-icon></span><span class="room-copy"><strong>${esc(r.name)}</strong><span class="room-temp">${temp(live.current_temperature)}</span><small>${esc(live.paused?'Pause (capteur actif)':live.fault||MODES[live.profile]||live.profile||'En attente')}</small></span><span class="setpoint" aria-label="Consigne ${temp(live.temperature)}">${temp(live.temperature)}</span></button>`;}).join('')||'<p>Ajoutez votre première vanne dans Gérer les pièces.</p>'}<details class="help"><summary aria-label="Afficher l’explication">?</summary><p class="hint">Salle de bain : le radiateur toujours ouvert chauffe avec le circuit.</p></details></section>
+          <section class="rooms-panel"><h3>Pièces</h3>${rooms.map(r=>{const live=details.get(r.id)||{};const isHeating=relayState==='on'&&live.hvac_action==='heating';return `<button class="room" data-room="${r.id}"><span class="room-icon ${isHeating?'heating':''}" role="img" aria-label="${isHeating?'Chauffage en cours':'Chauffage à l’arrêt'}"><ha-icon icon="mdi:radiator"></ha-icon></span><span class="room-copy"><strong>${esc(r.name)}</strong><span class="room-temp">${temp(live.current_temperature)}</span><small>${esc(live.paused?'Pause (capteur actif)':live.fault||MODES[live.profile]||live.profile||'En attente')}</small></span><span class="setpoint" aria-label="Consigne ${temp(live.temperature)}">${temp(live.temperature)}</span></button>`;}).join('')||'<p>Ajoutez votre première vanne dans Gérer les pièces.</p>'}<details class="help"><summary aria-label="Afficher l’explication">?</summary><p class="hint">Salle de bain : le radiateur toujours ouvert chauffe avec le circuit.</p></details></section>
         </section>`;
       }else if(this.view==='manage'){
         content=`<h2>Gérer les pièces</h2><details class="help"><summary aria-label="Afficher l’explication">?</summary><p class="hint">${rooms.length} vanne(s). Cette liste pilote aussi les consignes et la chaudière.</p></details><button class="primary" id="add">+ Ajouter une vanne</button>${rooms.map(r=>`<div class="manage-row"><div><strong>${esc(r.name)}</strong><small>${esc(r.entity)}</small></div><div class="actions"><button data-edit="${r.id}">Modifier</button><button data-remove="${r.id}">Retirer</button></div></div>`).join('')}`;
