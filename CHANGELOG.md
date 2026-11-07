@@ -1,5 +1,10 @@
 # Historique
 
+## 3.2.10 — 7 novembre 2026
+
+- Permet de modifier le nom de maison dans les réglages de la carte et le conserve après redémarrage.
+- Passe le bandeau d’accueil au rouge quand le relais chaudière est allumé, puis au bleu lorsqu’il s’arrête.
+
 ## 3.2.9 — 6 novembre 2026
 
 - Ajoute une nouvelle adresse de chargeur Lovelace pour contourner sûrement le cache persistant du navigateur. La ressource se remplace une seule fois ; le chemin reste ensuite stable.

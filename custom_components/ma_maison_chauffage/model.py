@@ -10,7 +10,7 @@ DEFAULT_TEMPS = dict(confort=20.0, eco=17.0, nuit=17.0, absent=14.0)
 
 def initial_data():
     return {"revision": 0, "rooms": [], "settings": {
-        "enabled": False, "absent": False, "relay": "", "schedules": [],
+        "enabled": False, "absent": False, "relay": "", "schedules": [], "house_name": "Ma maison",
         "active_schedule": "", "confirm_seconds": 30, "stop_seconds": 30,
         "minimum_off": 180, "freshness_minutes": 120,
         "anticipation_enabled": True, "anticipation_window_days": 14, "outdoor_sensor": "",
@@ -99,6 +99,7 @@ def change(data, operation, payload, now):
             raise ValueError("Réglage inconnu.")
         previous = deepcopy(settings)
         settings.update(payload)
+        settings["house_name"] = label(settings["house_name"])
         for key in ("enabled", "absent", "anticipation_enabled"):
             if not isinstance(settings[key], bool):
                 raise ValueError("Valeur oui/non attendue.")
@@ -180,3 +181,4 @@ def decide(settings, count, heating, faults, actual, old, now, reset=False):
     return {"wanted": wanted, "since": since, "off_since": off_since, "actual": actual,
             "desired": desired, "attempts": attempts + int(send),
             "last_attempt": now if send else last}, send
+

@@ -43,6 +43,9 @@ async def async_update_options(hass, entry):
     runtime = hass.data.get(DOMAIN)
     if runtime:
         runtime.house_name = entry.options.get("house_name", "Ma maison")
+        runtime.data["settings"]["house_name"] = runtime.house_name
+        runtime.data["revision"] += 1
+        await runtime.persist()
         async_dispatcher_send(hass, SIGNAL)
 
 
@@ -87,8 +90,11 @@ class HeatingRuntime:
             self.data = saved["configuration"]
             self.memory = saved.get("memory", {})
             self.learning = saved.get("learning", {})
+        had_house_name = "house_name" in self.data["settings"]
         for key, value in initial_data()["settings"].items():
             self.data["settings"].setdefault(key, value)
+        if not had_house_name:
+            self.data["settings"]["house_name"] = self.house_name
 
     async def persist(self):
         await self.store.async_save({"configuration": deepcopy(self.data), "memory": deepcopy(self.memory), "learning": deepcopy(self.learning)})
@@ -417,3 +423,4 @@ class HeatingRuntime:
                 except Exception:
                     _LOGGER.debug("Notification indisponible", exc_info=True)
             self.publish()
+

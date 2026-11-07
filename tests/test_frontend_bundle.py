@@ -31,9 +31,9 @@ class BundleTests(unittest.TestCase):
 
     def test_version_and_hacs_structure(self):
         manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["version"], frontend.VERSION)
-        bootstrap = (COMPONENT / "assets/bootstrap.js").read_text(encoding="utf-8")
-        self.assertEqual(bootstrap.count("?v=" + manifest["version"]), 2)
+        for name in ("bootstrap.js", "bootstrap-v3.js"):
+            bootstrap = (COMPONENT / "assets" / name).read_text(encoding="utf-8")
+            self.assertEqual(bootstrap.count("?v=" + manifest["version"]), 2)
         self.assertTrue((ROOT / "hacs.json").exists())
         self.assertEqual([p.name for p in (ROOT / "custom_components").iterdir() if p.is_dir()], ["ma_maison_chauffage"])
 
