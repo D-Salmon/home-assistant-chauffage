@@ -13,7 +13,7 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
-from .model import change, decide, initial_data, supported_temperature, target
+from .model import change, decide, initial_data, supported_temperature, target, valve_override_temperature
 from .learning import add_sample, estimate_minutes, upcoming_block
 
 DOMAIN = "ma_maison_chauffage"
@@ -79,6 +79,7 @@ class HeatingRuntime:
         self.started = False
         self.reset = True
         self.tasks = {}
+        self.sent_setpoints = {}
         self.command_errors = {}
         self.retry_after = {}
         self.limit = asyncio.Semaphore(4)
@@ -113,8 +114,43 @@ class HeatingRuntime:
         watched.update(r.get("pause_entity", "") for r in self.data["rooms"] if r.get("pause_entity"))
         watched.update(r["last_seen"] for r in self.data["rooms"] if r["last_seen"])
         entity = event.data.get("entity_id")
-        if self.started and entity in watched and not self.lock.locked():
-            self.hass.async_create_task(self.tick())
+        if self.started and entity in watched:
+            old_state, new_state = event.data.get("old_state"), event.data.get("new_state")
+            old_temp = old_state.attributes.get("temperature") if old_state else None
+            new_temp = new_state.attributes.get("temperature") if new_state else None
+            room = next((r for r in self.data["rooms"] if r["entity"] == entity), None)
+            if (room and room.get("override") and room["override"]["until"] > time.time()
+                    and old_temp is not None and new_temp is not None and old_temp != new_temp
+                    and new_state.state not in ("unknown", "unavailable")):
+                self.hass.async_create_task(self.valve_setpoint_changed(room["id"], new_temp))
+                return
+            if not self.lock.locked():
+                self.hass.async_create_task(self.tick())
+
+    async def valve_setpoint_changed(self, room_id, value):
+        await self.adopt_valve_setpoint(room_id, value)
+        await self.tick()
+
+    async def adopt_valve_setpoint(self, room_id, value):
+        """Turn a physical valve adjustment into a fresh three-hour override."""
+        async with self.lock:
+            now = time.time()
+            room = next((r for r in self.data["rooms"] if r["id"] == room_id), None)
+            if not room:
+                return
+            recent = [(sent, at) for sent, at in self.sent_setpoints.get(room_id, []) if now - at < 120]
+            self.sent_setpoints[room_id] = recent
+            numeric = valve_override_temperature(room, self.data["settings"], value, {sent for sent, _ in recent}, now)
+            if numeric is None:
+                return
+            new = change(self.data, "override", {"id": room_id, "temperature": numeric, "hours": 3}, now)
+            await self.store.async_save({"configuration": deepcopy(new), "memory": deepcopy(self.memory), "learning": deepcopy(self.learning)})
+            self.data = new
+            task = self.tasks.pop(room_id, None)
+            if task:
+                task.cancel()
+            self.retry_after.pop(room_id, None)
+            self.publish()
 
     async def start(self, _event=None):
         self.started = True
@@ -288,6 +324,7 @@ class HeatingRuntime:
             _LOGGER.warning("Mise en pause impossible pour %s: %s", room["entity"], exc)
 
     async def setpoint(self, room, value, revision):
+        cancelled = False
         try:
             async with self.limit:
                 if not self.started or self.data["revision"] != revision or not self.data["settings"]["enabled"] or self.room_paused(room, time.time()):
@@ -304,16 +341,21 @@ class HeatingRuntime:
                 if self.desired_target(room, self.snapshot(self.data["settings"]["active_schedule"]), time.time())[0] != value:
                     return
                 if current["attributes"].get("temperature") != value:
+                    recent = [(sent, at) for sent, at in self.sent_setpoints.get(room["id"], []) if time.time() - at < 120]
+                    recent.append((value, time.time()))
+                    self.sent_setpoints[room["id"]] = recent
                     await self.service("climate", "set_temperature", {"entity_id": room["entity"], "temperature": value})
                 self.command_errors.pop(room["id"], None)
         except asyncio.CancelledError:
+            cancelled = True
             raise
         except Exception as exc:
             self.command_errors[room["id"]] = "Consigne non envoyée : " + str(exc)
             _LOGGER.warning("Envoi de consigne impossible pour %s: %s", room["entity"], exc)
         finally:
             # Also limits repeated requests while a battery device acknowledges slowly.
-            self.retry_after[room["id"]] = time.time() + 30
+            if not cancelled:
+                self.retry_after[room["id"]] = time.time() + 30
 
     async def tick(self, _now=None):
         try:

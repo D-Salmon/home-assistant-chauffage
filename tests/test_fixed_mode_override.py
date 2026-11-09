@@ -69,6 +69,28 @@ class FixedModeOverrideTests(unittest.TestCase):
         changed = model.change(changed, "settings", {"active_schedule": "schedule.semaine"}, 1100)
         self.assertEqual(changed["rooms"][0]["override"]["temperature"], 20.0)
 
+    def test_physical_valve_change_starts_new_three_hour_override(self):
+        changed = model.change(self.data, "override", {
+            "id": self.room_id, "temperature": 20, "hours": 3,
+        }, 1000)
+        room = changed["rooms"][0]
+        selected = model.valve_override_temperature(room, changed["settings"], 22, {20}, 1100)
+        self.assertEqual(selected, 22.0)
+        adopted = model.change(changed, "override", {
+            "id": self.room_id, "temperature": selected, "hours": 3,
+        }, 1100)
+        self.assertEqual(adopted["rooms"][0]["override"], {"temperature": 22.0, "until": 11900})
+
+    def test_valve_acknowledgment_does_not_replace_override(self):
+        changed = model.change(self.data, "override", {
+            "id": self.room_id, "temperature": 23, "hours": 3,
+        }, 1000)
+        room = changed["rooms"][0]
+        self.assertIsNone(model.valve_override_temperature(room, changed["settings"], 23, {23}, 1100))
+        self.assertIsNone(model.valve_override_temperature(room, changed["settings"], 21, {21, 23}, 1100))
+        self.assertIsNone(model.valve_override_temperature(room, changed["settings"], 22.3, set(), 1100))
+        self.assertIsNone(model.valve_override_temperature(room, changed["settings"], 22, set(), 11801))
+
 
 if __name__ == "__main__":
     unittest.main()
