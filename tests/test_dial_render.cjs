@@ -57,6 +57,7 @@ room.override = {temperature:21,until:4102444800};
 card.render();
 assert.match(card.shadowRoot.innerHTML, /aria-valuenow="21"/);
 assert.match(card.shadowRoot.innerHTML, /Consigne active jusqu’au/);
+assert.match(card.shadowRoot.innerHTML, /Enregistrer et reprendre ce mode/);
 assert.match(card.shadowRoot.innerHTML, /Consigne demandée : 21 °C\. Consigne lue sur climate\.salon : 20 °C\. La valeur de l’entité n’a pas encore suivi\./);
 valveState.attributes.temperature=21;
 card.render();

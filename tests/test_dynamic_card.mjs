@@ -25,7 +25,7 @@ const hass={
     if(data.revision!==model.revision)throw Error('Les réglages ont changé ailleurs.');
     const p=data.payload;
     if(data.operation==='save_room'){
-      if(p.id)model.rooms[model.rooms.findIndex(r=>r.id===p.id)]={...model.rooms.find(r=>r.id===p.id),...p};
+      if(p.id){const room=model.rooms.find(r=>r.id===p.id),{resume_override,...fields}=p;Object.assign(room,fields);if(resume_override)room.override=null;}
       else model.rooms.push({id:'room_'+model.revision,mode:'planning',last_seen:'',override:null,...p});
     }else if(data.operation==='remove_room')model.rooms=model.rooms.filter(r=>r.id!==p.id);
     else if(data.operation==='settings')model.settings={...model.settings,...p};
@@ -92,7 +92,8 @@ assert.match(q('.valve-feedback').textContent,/Les valeurs correspondent dans Ho
 assert.equal(q('.room-detail .override-until').textContent.includes('Consigne active jusqu’au'),true);
 assert.equal(q('#resume-mode').value,'planning');
 assert.equal(q('#resume').textContent,'Reprendre maintenant');
-q('#resume').click();await settle();assert.equal(model.rooms[0].override,null);
+assert.equal(q('#room-form button[type="submit"]').textContent,'Enregistrer et reprendre ce mode');
+submit('#room-form');await settle();assert.equal(calls.at(-1).payload.resume_override,true);assert.equal(model.rooms[0].override,null);
 assert.equal(model.rooms[0].mode,'planning');
 assert.equal(card.view,'home');assert.equal(all('[data-room]').length,1);
 q('[data-room]').click();input('#eco','15');q('#cancel').click();assert.equal(all('[data-room]').length,1);
