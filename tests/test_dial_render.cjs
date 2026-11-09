@@ -19,10 +19,11 @@ const room = {id:'r1',name:'Salon',entity:'climate.salon',mode:'planning',
   temperatures:{confort:20,eco:17,nuit:17,absent:14},override:null};
 const settings = {enabled:true,absent:false,schedules:[],active_schedule:'',house_name:'Maison',relay:'switch.boiler'};
 const relayState = {state:'off'};
+const valveState = {attributes:{temperature:20}};
 const registryState = {entity_id:'sensor.registry',attributes:{integration:'ma_maison_chauffage',
   configuration:{revision:1,rooms:[room],settings},status:{rooms:[{id:'r1',current_temperature:19,temperature:20,target:20,hvac_action:'idle'}],relay:'off'}}};
 card.setConfig({});
-card.hass = {states:{'sensor.registry':registryState,'switch.boiler':relayState}};
+card.hass = {states:{'sensor.registry':registryState,'switch.boiler':relayState,'climate.salon':valveState}};
 card.view = 'room';card.selected = 'r1';card.render();
 assert.match(card.shadowRoot.innerHTML, /data-nav="home" aria-pressed="false"/);
 assert.doesNotMatch(card.shadowRoot.innerHTML, /\.room-card \.nav button\[data-nav="home"\]\{color:#3475eb/);
@@ -34,6 +35,10 @@ room.override = {temperature:21,until:4102444800};
 card.render();
 assert.match(card.shadowRoot.innerHTML, /aria-valuenow="21"/);
 assert.match(card.shadowRoot.innerHTML, /Consigne active jusqu’au/);
+assert.match(card.shadowRoot.innerHTML, /Consigne demandée : 21 °C\. Consigne lue sur climate\.salon : 20 °C\. La valeur de l’entité n’a pas encore suivi\./);
+valveState.attributes.temperature=21;
+card.render();
+assert.match(card.shadowRoot.innerHTML, /Les valeurs correspondent dans Home Assistant\./);
 assert.match(card.shadowRoot.innerHTML, /id="resume-mode"/);
 assert.match(card.shadowRoot.innerHTML, /Reprendre maintenant/);
 assert.match(card.shadowRoot.innerHTML, /class="room-detail-target"[^>]*>.*<strong>21 °C<\/strong>/s);

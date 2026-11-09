@@ -13,7 +13,7 @@ function states(){
     'schedule.week':{entity_id:'schedule.week',attributes:{friendly_name:'Semaine'}},
     'sensor.outdoor':{entity_id:'sensor.outdoor',state:'8.5',attributes:{friendly_name:'Extérieur',unit_of_measurement:'°C'}}
   };
-  for(let i=0;i<22;i++)result['climate.valve_'+i]={entity_id:'climate.valve_'+i,attributes:{friendly_name:'Vanne '+i}};
+  for(let i=0;i<22;i++)result['climate.valve_'+i]={entity_id:'climate.valve_'+i,attributes:{friendly_name:'Vanne '+i,temperature:20}};
   return result;
 }
 const hass={
@@ -86,6 +86,9 @@ q('#override-minus').click();assert.equal(q('#override-temp').value,'24.5');
 input('#override-temp','21');input('#hours','2');submit('#override-form');await settle();
 assert.deepEqual(calls.at(-1).payload,{id:model.rooms[0].id,temperature:21,hours:2});
 assert.equal(card.view,'home');assert.equal(q('.setpoint').textContent,'21 °C');q('[data-room]').click();
+assert.match(q('.valve-feedback').textContent,/Consigne demandée : 21 °C.*climate\.valve_0 : 20 °C/);
+hass.states['climate.valve_0'].attributes.temperature=21;card.hass=hass;
+assert.match(q('.valve-feedback').textContent,/Les valeurs correspondent dans Home Assistant/);
 assert.equal(q('.room-detail .override-until').textContent.includes('Consigne active jusqu’au'),true);
 assert.equal(q('#resume-mode').value,'planning');
 assert.equal(q('#resume').textContent,'Reprendre maintenant');

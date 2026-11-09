@@ -28,6 +28,7 @@
           q('.room-detail-temperature strong').textContent=temp(live.current_temperature);
           const activeOverride=this.model.settings.enabled&&!this.model.settings.absent&&room.override?.until>Date.now()/1000?room.override:null;
           q('.room-detail-target strong').textContent=temp(activeOverride?.temperature??live.target??live.temperature);
+          if(activeOverride&&q('.valve-feedback'))q('.valve-feedback').textContent=this.valveFeedback(room,activeOverride.temperature);
           q('.room-detail .hero-status strong').textContent=live.paused?'Chauffage en pause':live.fault||(!this.model.settings.enabled?'Chauffage arrêté':heating?'Chauffage en cours':'Chauffage en attente');
           q('.room-detail .hero-status small').textContent=MODES[live.profile]||live.profile||MODES[room.mode]||room.mode;
           q('.room-detail .hero').classList.toggle('heating',heating);
@@ -46,6 +47,13 @@
       this.status=entry?.attributes?.status||{};this.homeName=this.model?.settings?.house_name||entry?.attributes?.house_name||'Ma maison';
     }
     relayState(){return this._hass?.states?.[this.model?.settings?.relay]?.state??this.status?.relay;}
+    valveFeedback(room,requested){
+      const raw=this._hass?.states?.[room.entity]?.attributes?.temperature;
+      const reported=raw===null||raw===undefined||raw===''?null:Number(raw);
+      const value=reported!==null&&Number.isFinite(reported)?reported:null;
+      if(value===null)return `Consigne demandée : ${temp(requested)}. Aucune consigne lisible sur ${room.entity}.`;
+      return `Consigne demandée : ${temp(requested)}. Consigne lue sur ${room.entity} : ${temp(value)}. ${Math.abs(value-requested)<0.05?'Les valeurs correspondent dans Home Assistant.':'La valeur de l’entité n’a pas encore suivi.'}`;
+    }
     getCardSize(){return Math.max(5,(this.model?.rooms.length||0)+3);}
     async refresh(){this.readState(await this._hass.callWS({type:'get_states'}));}
     note(message){this.message=message;const node=this.shadowRoot.querySelector('#message');if(node)node.textContent=message;}
@@ -88,7 +96,7 @@
             <div class="hero-status"><span class="status-icon" aria-hidden="true">♨</span><div><strong>${esc(state)}</strong><small>${esc(profile)}</small></div></div>
           </header>
           <div class="room-detail-body">
-            <form id="override-form" class="room-detail-override"><h3>Consigne temporaire</h3>${activeOverride?`<div class="resume-control"><p class="override-until">Consigne active jusqu’au ${esc(new Date(activeOverride.until*1000).toLocaleString('fr-FR'))}.</p><label for="resume-mode">Mode à reprendre maintenant</label><div class="resume-picker"><select id="resume-mode">${Object.entries(MODES).map(([value,name])=>`<option value="${value}" ${room.mode===value?'selected':''}>${name}</option>`).join('')}</select><button type="button" id="resume" class="primary">Reprendre maintenant</button></div></div>`:''}<p>Déplacez le repère sur l’arc pour choisir la température, puis indiquez la durée.</p>
+            <form id="override-form" class="room-detail-override"><h3>Consigne temporaire</h3>${activeOverride?`<div class="resume-control"><p class="override-until">Consigne active jusqu’au ${esc(new Date(activeOverride.until*1000).toLocaleString('fr-FR'))}.</p><p class="valve-feedback" role="status">${esc(this.valveFeedback(room,activeOverride.temperature))}</p><label for="resume-mode">Mode à reprendre maintenant</label><div class="resume-picker"><select id="resume-mode">${Object.entries(MODES).map(([value,name])=>`<option value="${value}" ${room.mode===value?'selected':''}>${name}</option>`).join('')}</select><button type="button" id="resume" class="primary">Reprendre maintenant</button></div></div>`:''}<p>Déplacez le repère sur l’arc pour choisir la température, puis indiquez la durée.</p>
               <div class="dial-wrap"><svg id="temperature-dial" class="temperature-dial" viewBox="0 0 240 205" role="slider" tabindex="${canOverride?'0':'-1'}" aria-label="Consigne temporaire" aria-valuemin="5" aria-valuemax="25" aria-valuenow="${overrideValue}" aria-valuetext="${temp(overrideValue)}" aria-disabled="${!canOverride}">
                 <path class="dial-track" d="M 56.36 168.64 A 90 90 0 1 1 183.64 168.64" pathLength="100"></path>
                 <path class="dial-fill" d="M 56.36 168.64 A 90 90 0 1 1 183.64 168.64" pathLength="100" style="stroke-dasharray:${(overrideValue-5)*5} 100"></path>
