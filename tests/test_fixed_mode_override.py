@@ -40,6 +40,20 @@ class FixedModeOverrideTests(unittest.TestCase):
         self.assertIsNone(room["override"])
         self.assertEqual(model.target(room, resumed["settings"], None, 1100), (23.0, "confort"))
 
+    def test_resume_can_choose_another_mode(self):
+        changed = model.change(self.data, "override", {
+            "id": self.room_id, "temperature": 20, "hours": 3,
+        }, 1000)
+        resumed = model.change(changed, "resume", {"id": self.room_id, "mode": "eco"}, 1100)
+        room = resumed["rooms"][0]
+        self.assertEqual(room["mode"], "eco")
+        self.assertIsNone(room["override"])
+        self.assertEqual(model.target(room, resumed["settings"], None, 1100), (17.0, "eco"))
+
+    def test_resume_rejects_unknown_mode(self):
+        with self.assertRaisesRegex(ValueError, "Mode de pièce inconnu"):
+            model.change(self.data, "resume", {"id": self.room_id, "mode": "invalid"}, 1100)
+
     def test_absence_blocks_temporary_setpoint(self):
         self.data["settings"]["absent"] = True
         with self.assertRaisesRegex(ValueError, "absence maison"):

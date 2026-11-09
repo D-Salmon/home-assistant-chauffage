@@ -30,7 +30,7 @@ const hass={
     }else if(data.operation==='remove_room')model.rooms=model.rooms.filter(r=>r.id!==p.id);
     else if(data.operation==='settings')model.settings={...model.settings,...p};
     else if(data.operation==='override')model.rooms.find(r=>r.id===p.id).override={temperature:p.temperature,until:Date.now()/1000+p.hours*3600};
-    else if(data.operation==='resume')model.rooms.find(r=>r.id===p.id).override=null;
+    else if(data.operation==='resume'){const room=model.rooms.find(r=>r.id===p.id);room.mode=p.mode;room.override=null;}
     model.revision++;
   }
 };
@@ -82,7 +82,10 @@ q('#override-minus').click();assert.equal(q('#override-temp').value,'24.5');
 input('#override-temp','21');input('#hours','2');submit('#override-form');await settle();
 assert.deepEqual(calls.at(-1).payload,{id:model.rooms[0].id,temperature:21,hours:2});
 assert.equal(q('.room-detail .override-until').textContent.includes('Consigne active jusqu’au'),true);
+assert.equal(q('#resume-mode').value,'planning');
+assert.equal(q('#resume').textContent,'Reprendre maintenant');
 q('#resume').click();await settle();assert.equal(model.rooms[0].override,null);
+assert.equal(model.rooms[0].mode,'planning');
 q('#room-back').click();assert.equal(all('[data-room]').length,1);
 q('[data-room]').click();input('#eco','15');q('#cancel').click();assert.equal(all('[data-room]').length,1);
 q('[data-room]').click();input('#mode','confort');submit('#room-form');await settle();
@@ -90,8 +93,10 @@ q('[data-nav="home"]').click();q('[data-room]').click();
 assert.equal(q('.room-detail-override button[type="submit"]').disabled,false);
 input('#override-temp','22');submit('#override-form');await settle();
 assert.equal(model.rooms[0].mode,'confort');
-assert.equal(q('#resume').textContent,'Reprendre le mode Confort');
-q('#resume').click();await settle();assert.equal(model.rooms[0].mode,'confort');
+assert.equal(q('#resume-mode').value,'confort');
+input('#resume-mode','planning');q('#resume').click();await settle();
+assert.equal(model.rooms[0].mode,'planning');
+assert.equal(model.rooms[0].override,null);
 q('#room-back').click();
 
 // The rendered list follows the registry, not eight hard-coded rows.
