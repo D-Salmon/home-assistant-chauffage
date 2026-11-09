@@ -10,7 +10,7 @@
   const dialFromPoint=(x,y)=>{let angle=Math.atan2(y-105,x-120)*180/Math.PI;if(angle>=45&&angle<135)angle=x<120?135:405;else if(angle<135)angle+=360;return dialStep(5+(angle-135)*20/270);};
   class MaMaisonCard extends HTMLElement {
     static getStubConfig(){return {type:'custom:ma-maison-chauffage-card'};}
-    constructor(){super();this.attachShadow({mode:'open'});this.view='home';this.selected=null;this.dirty=false;this.busy=false;this.message='';this.pendingSettings=null;}
+    constructor(){super();this.attachShadow({mode:'open'});this.view='home';this.selected=null;this.dirty=false;this.dialTouched=false;this.busy=false;this.message='';this.pendingSettings=null;}
     setConfig(config){this.config=config;this.render();}
     set hass(hass){
       const previousRevision=this.model?.revision;
@@ -28,6 +28,7 @@
           q('.room-detail-temperature strong').textContent=temp(live.current_temperature);
           const activeOverride=this.model.settings.enabled&&!this.model.settings.absent&&room.override?.until>Date.now()/1000?room.override:null;
           q('.room-detail-target strong').textContent=temp(activeOverride?.temperature??live.target??live.temperature);
+          if(!this.busy&&!this.dirty&&!this.dialTouched)this.updateDial(activeOverride?.temperature??live.target??live.temperature??room.temperatures[room.mode]??room.temperatures.confort);
           if(q('.valve-feedback'))q('.valve-feedback').textContent=this.valveFeedback(room,activeOverride?.temperature??live.target);
           q('.room-detail .hero-status strong').textContent=live.paused?'Chauffage en pause':live.fault||(!this.model.settings.enabled?'Chauffage arrêté':heating?'Chauffage en cours':'Chauffage en attente');
           q('.room-detail .hero-status small').textContent=MODES[live.profile]||live.profile||MODES[room.mode]||room.mode;
@@ -36,6 +37,19 @@
         return;
       }
       if(!this.busy&&!this.dirty&&!['edit','room','settings'].includes(this.view))this.render();
+    }
+    updateDial(value,writeInput=true){
+      if(typeof value!=='number'||!Number.isFinite(value))return;
+      const q=s=>this.shadowRoot.querySelector(s),dial=q('#temperature-dial'),input=q('#override-temp');
+      if(!dial||!input)return;
+      const selected=dialStep(value),[x,y]=dialPoint(selected);
+      if(writeInput)input.value=String(selected);
+      dial.setAttribute('aria-valuenow',String(selected));dial.setAttribute('aria-valuetext',temp(selected));
+      q('.dial-fill').style.strokeDasharray=`${(selected-5)*5} 100`;
+      q('.dial-thumb').setAttribute('cx',String(x));q('.dial-thumb').setAttribute('cy',String(y));
+      q('.dial-readout').textContent=temp(selected);
+      const disabled=dial.getAttribute('aria-disabled')==='true';
+      q('#override-minus').disabled=disabled||selected<=5;q('#override-plus').disabled=disabled||selected>=25;
     }
     readState(states){
       const entry=this.config?.entity?states.find(s=>s.entity_id===this.config.entity):states.find(s=>s.attributes?.integration===DOMAIN);
@@ -70,7 +84,7 @@
     }
     navigate(view,id=null){
       if(this.dirty||this.shadowRoot.querySelector('chauffage-planning-card')?.dirty){this.note('Enregistrez ou annulez les modifications avant de quitter cet écran.');return;}
-      this.view=view;this.selected=id;this.pendingRemove=null;this.message='';this.render();
+      this.view=view;this.selected=id;this.dialTouched=false;this.pendingRemove=null;this.message='';this.render();
     }
     options(domain,selected='',exclude=[]){
       const ids=Object.keys(this._hass.states).filter(id=>id.startsWith(domain+'.')&&!exclude.includes(id));
@@ -85,7 +99,7 @@
         const heating=this.relayState()==='on'&&live.hvac_action==='heating';
         const canOverride=this.model.settings.enabled&&!this.model.settings.absent;
         const activeOverride=room.override?.until>Date.now()/1000?room.override:null;
-        const overrideValue=Number(activeOverride?.temperature??live.target??room.temperatures[room.mode]??room.temperatures.confort);
+        const overrideValue=Number(activeOverride?.temperature??live.target??live.temperature??room.temperatures[room.mode]??room.temperatures.confort);
         const [thumbX,thumbY]=dialPoint(overrideValue);
         const state=live.paused?'Chauffage en pause':live.fault||(!this.model.settings.enabled?'Chauffage arrêté':heating?'Chauffage en cours':'Chauffage en attente');
         const profile=MODES[live.profile]||live.profile||MODES[room.mode]||room.mode;
@@ -176,16 +190,7 @@
       const override=q('#override-form');if(override)override.onsubmit=e=>{e.preventDefault();if(this.dirty){this.note('Enregistrez d’abord les réglages de la pièce.');return;}const v=new FormData(override);this.command('override',{id:this.selected,temperature:Number(v.get('temperature')),hours:Number(v.get('hours'))},this.formRevision,'home');};
       const dial=q('#temperature-dial'),dialInput=q('#override-temp'),minus=q('#override-minus'),plus=q('#override-plus');
       if(dial&&dialInput&&dial.getAttribute('aria-disabled')==='false'){
-        const updateDial=(value,writeInput=true)=>{
-          if(!Number.isFinite(value))return;
-          const selected=dialStep(value),[x,y]=dialPoint(selected);
-          if(writeInput)dialInput.value=String(selected);
-          dial.setAttribute('aria-valuenow',String(selected));dial.setAttribute('aria-valuetext',temp(selected));
-          q('.dial-fill').style.strokeDasharray=`${(selected-5)*5} 100`;
-          q('.dial-thumb').setAttribute('cx',String(x));q('.dial-thumb').setAttribute('cy',String(y));
-          q('.dial-readout').textContent=temp(selected);
-          minus.disabled=selected<=5;plus.disabled=selected>=25;
-        };
+        const updateDial=(value,writeInput=true)=>{this.dialTouched=true;this.updateDial(value,writeInput);};
         const moveDial=e=>{
           const rect=dial.getBoundingClientRect(),scale=Math.min(rect.width/240,rect.height/205);
           if(!scale)return;
@@ -204,7 +209,7 @@
           if(next===undefined)return;
           e.preventDefault();updateDial(next);
         };
-        dialInput.oninput=()=>{const value=Number(dialInput.value);if(dialInput.value!==''&&value>=5&&value<=25)updateDial(value,false);};
+        dialInput.oninput=()=>{this.dialTouched=true;const value=Number(dialInput.value);if(dialInput.value!==''&&value>=5&&value<=25)updateDial(value,false);};
         dialInput.onchange=()=>{const value=Number(dialInput.value);if(dialInput.value!==''&&Number.isFinite(value))updateDial(value);};
         minus.onclick=()=>updateDial(Number(dialInput.value)-.5);
         plus.onclick=()=>updateDial(Number(dialInput.value)+.5);
