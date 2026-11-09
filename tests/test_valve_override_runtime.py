@@ -95,6 +95,20 @@ class ValveOverrideRuntimeTests(unittest.TestCase):
         self.runtime.publish.assert_called_once()
         self.runtime.tick.assert_awaited_once()
 
+    def test_valve_setpoint_starts_override_when_none_is_active(self):
+        self.runtime.data["rooms"][0]["override"] = None
+        self.runtime.sent_setpoints[self.room_id] = [(10, 1000)]
+        old = SimpleNamespace(state="heat", attributes={"temperature": 10})
+        new = SimpleNamespace(state="heat", attributes={"temperature": 11.5})
+        event = SimpleNamespace(data={"entity_id": "climate.chambre", "old_state": old, "new_state": new})
+        with patch.object(runtime_module.time, "time", return_value=1100):
+            self.runtime.state_changed(event)
+            for coroutine in self.created:
+                complete(coroutine)
+        self.assertEqual(self.runtime.data["rooms"][0]["override"], {"temperature": 11.5, "until": 11900})
+        self.runtime.publish.assert_called_once()
+        self.runtime.tick.assert_awaited_once()
+
     def test_own_setpoint_acknowledgment_keeps_previous_override(self):
         old = SimpleNamespace(state="heat", attributes={"temperature": 19})
         new = SimpleNamespace(state="heat", attributes={"temperature": 20})

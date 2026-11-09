@@ -81,6 +81,15 @@ class FixedModeOverrideTests(unittest.TestCase):
         }, 1100)
         self.assertEqual(adopted["rooms"][0]["override"], {"temperature": 22.0, "until": 11900})
 
+    def test_physical_valve_change_starts_override_without_previous_override(self):
+        room = self.data["rooms"][0]
+        selected = model.valve_override_temperature(room, self.data["settings"], 11.5, {10}, 1100)
+        self.assertEqual(selected, 11.5)
+        changed = model.change(self.data, "override", {
+            "id": self.room_id, "temperature": selected, "hours": 3,
+        }, 1100)
+        self.assertEqual(changed["rooms"][0]["override"], {"temperature": 11.5, "until": 11900})
+
     def test_valve_acknowledgment_does_not_replace_override(self):
         changed = model.change(self.data, "override", {
             "id": self.room_id, "temperature": 23, "hours": 3,
@@ -89,7 +98,7 @@ class FixedModeOverrideTests(unittest.TestCase):
         self.assertIsNone(model.valve_override_temperature(room, changed["settings"], 23, {23}, 1100))
         self.assertIsNone(model.valve_override_temperature(room, changed["settings"], 21, {21, 23}, 1100))
         self.assertIsNone(model.valve_override_temperature(room, changed["settings"], 22.3, set(), 1100))
-        self.assertIsNone(model.valve_override_temperature(room, changed["settings"], 22, set(), 11801))
+        self.assertEqual(model.valve_override_temperature(room, changed["settings"], 22, set(), 11801), 22.0)
 
 
 if __name__ == "__main__":

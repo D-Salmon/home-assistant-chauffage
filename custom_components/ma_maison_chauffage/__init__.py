@@ -119,8 +119,7 @@ class HeatingRuntime:
             old_temp = old_state.attributes.get("temperature") if old_state else None
             new_temp = new_state.attributes.get("temperature") if new_state else None
             room = next((r for r in self.data["rooms"] if r["entity"] == entity), None)
-            if (room and room.get("override") and room["override"]["until"] > time.time()
-                    and old_temp is not None and new_temp is not None and old_temp != new_temp
+            if (room and old_temp is not None and new_temp is not None and old_temp != new_temp
                     and new_state.state not in ("unknown", "unavailable")):
                 self.hass.async_create_task(self.valve_setpoint_changed(room["id"], new_temp))
                 return
