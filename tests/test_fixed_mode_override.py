@@ -54,6 +54,25 @@ class FixedModeOverrideTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Mode de pièce inconnu"):
             model.change(self.data, "resume", {"id": self.room_id, "mode": "invalid"}, 1100)
 
+    def test_saving_planning_again_can_end_temporary_setpoint(self):
+        planning = model.change(self.data, "save_room", {
+            "id": self.room_id, "name": "Chambre", "entity": "climate.chambre",
+            "mode": "planning", "temperatures": self.data["rooms"][0]["temperatures"],
+        }, 1000)
+        changed = model.change(planning, "override", {
+            "id": self.room_id, "temperature": 20, "hours": 3,
+        }, 1100)
+        payload = {"id": self.room_id, "name": "Chambre", "entity": "climate.chambre",
+                   "mode": "planning", "temperatures": changed["rooms"][0]["temperatures"]}
+        unchanged = model.change(changed, "save_room", payload, 1200)
+        self.assertIsNotNone(unchanged["rooms"][0]["override"])
+        resumed = model.change(changed, "save_room", {**payload, "resume_override": True}, 1200)
+        self.assertIsNone(resumed["rooms"][0]["override"])
+        self.assertNotIn("resume_override", resumed["rooms"][0])
+        self.assertEqual(model.target(resumed["rooms"][0], resumed["settings"],
+                                      {"state": "on", "attributes": {"profil": "confort"}}, 1200),
+                         (23.0, "confort"))
+
     def test_absence_blocks_temporary_setpoint(self):
         self.data["settings"]["absent"] = True
         with self.assertRaisesRegex(ValueError, "absence maison"):

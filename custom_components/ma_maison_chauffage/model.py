@@ -67,14 +67,17 @@ def change(data, operation, payload, now):
         raise ValueError("Données invalides.")
     rooms, settings = new["rooms"], new["settings"]
     if operation == "save_room":
-        allowed = {"id", "name", "entity", "temperatures", "mode", "last_seen", "pause_entity"}
+        allowed = {"id", "name", "entity", "temperatures", "mode", "last_seen", "pause_entity", "resume_override"}
         if set(payload) - allowed:
             raise ValueError("Champ de pièce inconnu.")
+        resume_override = payload.get("resume_override", False)
+        if not isinstance(resume_override, bool):
+            raise ValueError("Valeur oui/non attendue.")
         old = next((r for r in rooms if r["id"] == payload.get("id")), None)
         if "id" in payload and old is None:
             raise ValueError("La pièce n’existe plus. Rechargez la page.")
         room = deepcopy(old) if old else {"id": uuid.uuid4().hex, "mode": "planning", "override": None, "last_seen": "", "pause_entity": "", "temperatures": deepcopy(DEFAULT_TEMPS)}
-        room.update(payload)
+        room.update({key: value for key, value in payload.items() if key != "resume_override"})
         room["name"] = label(room.get("name"))
         room["entity"] = entity_id(room.get("entity"), "climate")
         room["last_seen"] = entity_id(room["last_seen"], "sensor", optional=True)
@@ -89,7 +92,7 @@ def change(data, operation, payload, now):
         if not isinstance(room["temperatures"], dict) or set(room["temperatures"]) != set(PROFILES):
             raise ValueError("Renseignez les quatre températures.")
         room["temperatures"] = {p: temperature(room["temperatures"][p]) for p in PROFILES}
-        if old and (old["mode"] != room["mode"] or old["entity"] != room["entity"]):
+        if old and (resume_override or old["mode"] != room["mode"] or old["entity"] != room["entity"]):
             room["override"] = None
         if old:
             rooms[rooms.index(old)] = room
