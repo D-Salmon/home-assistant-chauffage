@@ -88,6 +88,10 @@ def change(data, operation, payload, now):
         if operation == "remove_room":
             rooms.remove(room)
         elif operation == "resume":
+            mode = payload.get("mode", room["mode"])
+            if mode not in ("planning", *PROFILES):
+                raise ValueError("Mode de pièce inconnu.")
+            room["mode"] = mode
             room["override"] = None
         else:
             if not settings["enabled"] or settings["absent"]:

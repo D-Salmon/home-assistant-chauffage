@@ -30,7 +30,7 @@ const hass={
     }else if(data.operation==='remove_room')model.rooms=model.rooms.filter(r=>r.id!==p.id);
     else if(data.operation==='settings')model.settings={...model.settings,...p};
     else if(data.operation==='override')model.rooms.find(r=>r.id===p.id).override={temperature:p.temperature,until:Date.now()/1000+p.hours*3600};
-    else if(data.operation==='resume')model.rooms.find(r=>r.id===p.id).override=null;
+    else if(data.operation==='resume'){const room=model.rooms.find(r=>r.id===p.id);room.mode=p.mode;room.override=null;}
     model.revision++;
   }
 };
@@ -55,7 +55,7 @@ q('[data-nav="manage"]').click();q('#add').click();
 input('#room-name','Chambre enfant');input('#room-entity','climate.valve_0');
 input('#absent','13');input('#mode','absent');submit('#room-form');await settle();
 assert.equal(model.rooms.length,1);assert.equal(model.rooms[0].temperatures.absent,13);assert.equal(model.rooms[0].mode,'absent');
-q('[data-nav="home"]').click();assert.equal(all('[data-room]').length,1);
+assert.equal(card.view,'home');assert.equal(all('[data-room]').length,1);
 q('[data-room]').click();assert.equal(q('#mode').value,'absent',q('#mode').outerHTML+' '+JSON.stringify(card.model.rooms));
 assert.equal(q('.room-detail .hero-title h2').textContent,'Chambre enfant');
 assert.equal(q('.room-detail-temperature strong').textContent,'19 °C');
@@ -67,9 +67,9 @@ assert.equal(q('#override-minus').disabled,true);assert.equal(q('#override-plus'
 hass.states['sensor.registry'].attributes.status.rooms[0].current_temperature=21;card.hass=hass;
 assert.equal(q('.room-detail-temperature strong').textContent,'21 °C');
 const beforeTemperatureClick=calls.length;q('#absent').click();assert.equal(calls.length,beforeTemperatureClick,'Le champ température Absent ne doit pas activer une absence maison.');
-input('#eco','16');input('#mode','planning');submit('#room-form');await settle();assert.equal(model.rooms[0].temperatures.eco,16);
+input('#eco','16');input('#mode','planning');submit('#room-form');await settle();assert.equal(model.rooms[0].temperatures.eco,16);assert.equal(card.view,'home');
 model.settings.enabled=true;hass.states=states();card.hass=hass;
-q('[data-nav="home"]').click();q('[data-room]').click();
+q('[data-room]').click();
 assert.equal(q('.room-detail-override button[type="submit"]').disabled,false);
 assert.equal(q('#temperature-dial').getAttribute('aria-disabled'),'false');
 q('#override-plus').click();assert.equal(q('#override-temp').value,'20.5');
@@ -81,18 +81,24 @@ input('#override-temp','25');assert.equal(q('#override-plus').disabled,true);
 q('#override-minus').click();assert.equal(q('#override-temp').value,'24.5');
 input('#override-temp','21');input('#hours','2');submit('#override-form');await settle();
 assert.deepEqual(calls.at(-1).payload,{id:model.rooms[0].id,temperature:21,hours:2});
+assert.equal(card.view,'home');q('[data-room]').click();
 assert.equal(q('.room-detail .override-until').textContent.includes('Consigne active jusqu’au'),true);
+assert.equal(q('#resume-mode').value,'planning');
+assert.equal(q('#resume').textContent,'Reprendre maintenant');
 q('#resume').click();await settle();assert.equal(model.rooms[0].override,null);
-q('#room-back').click();assert.equal(all('[data-room]').length,1);
+assert.equal(model.rooms[0].mode,'planning');
+assert.equal(card.view,'home');assert.equal(all('[data-room]').length,1);
 q('[data-room]').click();input('#eco','15');q('#cancel').click();assert.equal(all('[data-room]').length,1);
 q('[data-room]').click();input('#mode','confort');submit('#room-form');await settle();
-q('[data-nav="home"]').click();q('[data-room]').click();
+assert.equal(card.view,'home');q('[data-room]').click();
 assert.equal(q('.room-detail-override button[type="submit"]').disabled,false);
 input('#override-temp','22');submit('#override-form');await settle();
-assert.equal(model.rooms[0].mode,'confort');
-assert.equal(q('#resume').textContent,'Reprendre le mode Confort');
-q('#resume').click();await settle();assert.equal(model.rooms[0].mode,'confort');
-q('#room-back').click();
+assert.equal(model.rooms[0].mode,'confort');assert.equal(card.view,'home');q('[data-room]').click();
+assert.equal(q('#resume-mode').value,'confort');
+input('#resume-mode','planning');q('#resume').click();await settle();
+assert.equal(model.rooms[0].mode,'planning');
+assert.equal(model.rooms[0].override,null);
+assert.equal(card.view,'home');
 
 // The rendered list follows the registry, not eight hard-coded rows.
 for(let i=1;i<20;i++)model.rooms.push({id:'extra_'+i,name:'Room '+i,entity:'climate.valve_'+i,temperatures:{confort:20,eco:17,nuit:17,absent:14},mode:'planning',last_seen:'',override:null});
@@ -100,21 +106,24 @@ model.revision++;hass.states=states();card.hass=hass;q('[data-nav="home"]').clic
 q('[data-nav="manage"]').click();q('[data-edit]').click();
 assert(!all('#room-entity option').some(o=>o.value==='climate.valve_1'));
 input('#room-name','<img src=x onerror=alert(1)>');submit('#room-form');await settle();
+assert.equal(card.view,'home');
 assert.equal(all('img').length,0);assert(card.shadowRoot.textContent.includes('<img src=x onerror=alert(1)>'));
 
 // An external state refresh must not discard an unsaved form or its revision.
-q('[data-edit]').click();input('#room-name','My unsaved name');const revision=card.formRevision;
+q('[data-nav="manage"]').click();q('[data-edit]').click();input('#room-name','My unsaved name');const revision=card.formRevision;
 model.revision++;hass.states=states();card.hass=hass;
 assert.equal(q('#room-name').value,'My unsaved name');assert.equal(card.formRevision,revision);
 submit('#room-form');await settle();assert(q('#message').textContent.includes('changé ailleurs'));assert.equal(q('#room-name').value,'My unsaved name');
 q('#cancel').click();
 q('[data-nav="manage"]').click();q('[data-remove]').click();
 assert.equal(model.rooms.length,20);q('#confirm-remove').click();await settle();assert.equal(model.rooms.length,19);
+assert.equal(card.view,'home');
 assert(!calls.some(c=>c.operation==='settings'&&c.payload.enabled===true));
 
 // Bind arbitrary schedule entities via settings, without editing YAML.
 q('[data-nav="settings"]').click();q('#schedules option').selected=true;
 submit('#settings-form');await settle();assert.equal(model.settings.active_schedule,'schedule.week');
+assert.equal(card.view,'home');
 q('#absent').click();await settle();assert.equal(model.settings.absent,true);
 assert.equal(all('[data-room]').length,19);
 console.log('PASS: DOM simulé — ajout, profils, 20 pièces, échappement HTML, formulaires préservés, conflits, retrait confirmé et plannings.');
