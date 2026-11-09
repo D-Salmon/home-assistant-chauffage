@@ -33,15 +33,15 @@ def temperature(value):
 
 
 def valve_override_temperature(room, settings, value, recently_sent, now):
-    """Accept only a new physical setpoint during an active override."""
+    """Accept a physical setpoint as a new temporary override."""
     override = room.get("override")
-    if not settings["enabled"] or settings["absent"] or not override or override["until"] <= now:
+    if not settings["enabled"] or settings["absent"]:
         return None
     try:
         selected = temperature(float(value))
     except (TypeError, ValueError):
         return None
-    if selected == override["temperature"] or selected in recently_sent:
+    if (override and override["until"] > now and selected == override["temperature"]) or selected in recently_sent:
         return None
     return selected
 
