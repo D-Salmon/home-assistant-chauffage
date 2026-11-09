@@ -1,7 +1,7 @@
 {
   "domain": "ma_maison_chauffage",
   "name": "Ma maison - Chauffage",
-  "version": "3.2.21",
+  "version": "3.2.22",
   "config_flow": true,
   "documentation": "https://github.com/D-Salmon/home-assistant-chauffage",
   "issue_tracker": "https://github.com/D-Salmon/home-assistant-chauffage/issues",
