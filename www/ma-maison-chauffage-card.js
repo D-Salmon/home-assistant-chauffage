@@ -54,7 +54,7 @@
       try{
         await this._hass.callService(DOMAIN,'command',{operation,payload,revision});
         if(operation==='settings')this.pendingSettings={revision:revision+1,payload};
-        this.dirty=false;await this.refresh();if(nextView)this.view=nextView;if(operation==='remove_room')this.pendingRemove=null;
+        this.dirty=false;await this.refresh();if(nextView){this.view=nextView;if(nextView==='home')this.selected=null;}if(operation==='remove_room')this.pendingRemove=null;
         this.message='Modification enregistrée.';this.busy=false;this.render();
       }catch(e){this.busy=false;this.shadowRoot.querySelectorAll('button').forEach(b=>b.disabled=false);this.note(e.message||String(e));}
     }
@@ -155,15 +155,15 @@
       all('[data-edit]').forEach(b=>b.onclick=()=>this.navigate('edit',b.dataset.edit));
       all('[data-remove]').forEach(b=>b.onclick=()=>{this.pendingRemove=b.dataset.remove;this.render();});
       if(q('#add'))q('#add').onclick=()=>this.navigate('edit');
-      if(q('#confirm-remove'))q('#confirm-remove').onclick=()=>this.command('remove_room',{id:this.pendingRemove},m.revision,'manage');
+      if(q('#confirm-remove'))q('#confirm-remove').onclick=()=>this.command('remove_room',{id:this.pendingRemove},m.revision,'home');
       if(q('#cancel-remove'))q('#cancel-remove').onclick=()=>{this.pendingRemove=null;this.render();};
       if(q('#active-plan'))q('#active-plan').onchange=e=>this.command('settings',{active_schedule:e.target.value});
       if(this.view==='home'&&q('#absent'))q('#absent').onclick=()=>this.command('settings',{absent:!s.absent});
       if(q('#cancel'))q('#cancel').onclick=()=>{this.dirty=false;this.navigate('home');};
-      if(q('#resume'))q('#resume').onclick=()=>{if(this.dirty){this.note('Enregistrez d’abord les réglages de la pièce.');return;}this.command('resume',{id:this.selected,mode:q('#resume-mode').value},this.formRevision);};
+      if(q('#resume'))q('#resume').onclick=()=>{if(this.dirty){this.note('Enregistrez d’abord les réglages de la pièce.');return;}this.command('resume',{id:this.selected,mode:q('#resume-mode').value},this.formRevision,'home');};
       if(q('#retry'))q('#retry').onclick=()=>this.command('retry',{});
-      const roomForm=q('#room-form');if(roomForm){roomForm.oninput=()=>this.dirty=true;roomForm.onsubmit=e=>{e.preventDefault();const values=new FormData(roomForm),room=m.rooms.find(r=>r.id===this.selected),payload={name:room?.name,entity:room?.entity,mode:values.get('mode'),temperatures:Object.fromEntries(Object.keys(PROFILES).map(p=>[p,Number(values.get(p))]))};if(room)payload.id=room.id;if(this.view==='edit'){payload.name=values.get('name');payload.entity=values.get('entity');payload.last_seen=values.get('last_seen');payload.pause_entity=values.get('pause_entity')||'';}this.command('save_room',payload,this.formRevision,'manage');};}
-      const override=q('#override-form');if(override)override.onsubmit=e=>{e.preventDefault();if(this.dirty){this.note('Enregistrez d’abord les réglages de la pièce.');return;}const v=new FormData(override);this.command('override',{id:this.selected,temperature:Number(v.get('temperature')),hours:Number(v.get('hours'))},this.formRevision);};
+      const roomForm=q('#room-form');if(roomForm){roomForm.oninput=()=>this.dirty=true;roomForm.onsubmit=e=>{e.preventDefault();const values=new FormData(roomForm),room=m.rooms.find(r=>r.id===this.selected),payload={name:room?.name,entity:room?.entity,mode:values.get('mode'),temperatures:Object.fromEntries(Object.keys(PROFILES).map(p=>[p,Number(values.get(p))]))};if(room)payload.id=room.id;if(this.view==='edit'){payload.name=values.get('name');payload.entity=values.get('entity');payload.last_seen=values.get('last_seen');payload.pause_entity=values.get('pause_entity')||'';}this.command('save_room',payload,this.formRevision,'home');};}
+      const override=q('#override-form');if(override)override.onsubmit=e=>{e.preventDefault();if(this.dirty){this.note('Enregistrez d’abord les réglages de la pièce.');return;}const v=new FormData(override);this.command('override',{id:this.selected,temperature:Number(v.get('temperature')),hours:Number(v.get('hours'))},this.formRevision,'home');};
       const dial=q('#temperature-dial'),dialInput=q('#override-temp'),minus=q('#override-minus'),plus=q('#override-plus');
       if(dial&&dialInput&&dial.getAttribute('aria-disabled')==='false'){
         const updateDial=(value,writeInput=true)=>{
@@ -204,7 +204,7 @@
       if(roomForm){const current=rooms.find(r=>r.id===this.selected);q('#mode').value=current?.mode||'planning';if(q('#room-entity'))q('#room-entity').value=current?.entity||'';if(q('#last-seen'))q('#last-seen').value=current?.last_seen||'';if(q('#pause-entity'))q('#pause-entity').value=current?.pause_entity||'';}
       if(settings){q('#relay').value=s.relay;q('#anticipation-window').value=String(s.anticipation_window_days);q('#outdoor-sensor').value=s.outdoor_sensor||'';all('#schedules option').forEach(o=>o.selected=s.schedules.some(p=>p.entity===o.value));}
       if(q('#active-plan'))q('#active-plan').value=s.active_schedule;
-      if(q('#planner')){if(customElements.get('chauffage-planning-card')){const card=document.createElement('chauffage-planning-card');card.setConfig({schedules:s.schedules});card.hass=this._hass;q('#planner').append(card);}else q('#planner').textContent='Chargez aussi la ressource chauffage-planning-card.js.';}
+      if(q('#planner')){if(customElements.get('chauffage-planning-card')){const card=document.createElement('chauffage-planning-card');card.addEventListener('chauffage-planning-saved',()=>{this.navigate('home');this.note('Planning enregistré.');});card.setConfig({schedules:s.schedules});card.hass=this._hass;q('#planner').append(card);}else q('#planner').textContent='Chargez aussi la ressource chauffage-planning-card.js.';}
     }
   }
   if(!customElements.get('ma-maison-chauffage-card'))customElements.define('ma-maison-chauffage-card',MaMaisonCard);

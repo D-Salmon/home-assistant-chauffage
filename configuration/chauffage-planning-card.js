@@ -55,6 +55,7 @@
     }
     async save(){
       if(this.busy||!this.draft)return;
+      let savedSuccessfully=false;
       try{
         const cleaned=validate(this.draft);
         this.busy=true;this.message='Enregistrement…';this.render();
@@ -66,8 +67,10 @@
         const saved=await this._hass.callWS({type:'schedule/update',schedule_id:id,...values});
         this.original=clone(saved);this.draft=clone(saved);for(const d of DAYS)this.draft[d]??=[];
         this.dirty=false;this.message='Planning enregistré dans Home Assistant.';
+        savedSuccessfully=true;
       }catch(e){this.message=e.message||String(e);}
       finally{this.busy=false;this.render();}
+      if(savedSuccessfully)this.dispatchEvent(new CustomEvent('chauffage-planning-saved',{bubbles:true,composed:true}));
     }
     add(){
       const b=this.draft[this.day];let from=12*60;
