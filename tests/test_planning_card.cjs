@@ -45,5 +45,14 @@ card._hass = {callWS: async message => message.type === 'schedule/list'
   await card.save();
   assert.equal(card.events.length, 0);
   assert.equal(card.dirty, true);
+
+  card.original = structuredClone(original);
+  card.draft = structuredClone(original);
+  card.draft.monday[0].to = '09:00';
+  card.setDirty = true;
+  await card.save();
+  assert.equal(card.dirty, false);
+  assert.equal(card.setDirty, true);
+  assert.equal(card.events.length, 0);
   console.log('planning save navigation signal OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });
