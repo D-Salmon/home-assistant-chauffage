@@ -73,6 +73,23 @@ class FixedModeOverrideTests(unittest.TestCase):
                                       {"state": "on", "attributes": {"profil": "confort"}}, 1200),
                          (23.0, "confort"))
 
+    def test_switching_from_eco_to_planning_uses_current_schedule_profile(self):
+        eco = model.change(self.data, "save_room", {
+            "id": self.room_id, "name": "Chambre", "entity": "climate.chambre",
+            "mode": "eco", "temperatures": self.data["rooms"][0]["temperatures"],
+        }, 1000)
+        planning = model.change(eco, "save_room", {
+            "id": self.room_id, "name": "Chambre", "entity": "climate.chambre",
+            "mode": "planning", "temperatures": eco["rooms"][0]["temperatures"],
+        }, 1100)
+        self.assertEqual(planning["rooms"][0]["mode"], "planning")
+        self.assertEqual(model.target(planning["rooms"][0], planning["settings"],
+                                      {"state": "on", "attributes": {"profil": "confort"}}, 1100),
+                         (23.0, "confort"))
+        self.assertEqual(model.target(planning["rooms"][0], planning["settings"],
+                                      {"state": "off", "attributes": {}}, 1100),
+                         (17.0, "eco"))
+
     def test_absence_blocks_temporary_setpoint(self):
         self.data["settings"]["absent"] = True
         with self.assertRaisesRegex(ValueError, "absence maison"):
