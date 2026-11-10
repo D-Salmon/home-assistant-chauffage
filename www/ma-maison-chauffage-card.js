@@ -86,7 +86,7 @@
       }catch(e){this.busy=false;this.shadowRoot.querySelectorAll('button').forEach(b=>b.disabled=false);this.note(e.message||String(e));}
     }
     navigate(view,id=null){
-      if(this.dirty||this.shadowRoot.querySelector('chauffage-planning-card')?.dirty){this.note('Enregistrez ou annulez les modifications avant de quitter cet écran.');return;}
+      if(this.dirty||this.shadowRoot.querySelector('chauffage-planning-card')?.dirty||this.shadowRoot.querySelector('chauffage-planning-card')?.setDirty){this.note('Enregistrez ou annulez les modifications avant de quitter cet écran.');return;}
       this.view=view;this.selected=id;this.dialTouched=false;this.pendingRemove=null;this.message='';this.render();
     }
     options(domain,selected='',exclude=[]){
@@ -143,7 +143,7 @@
         const outdoorValue=outdoorState&&outdoorState.state!==''?Number(outdoorState.state):NaN;
         const outdoorTemp=Number.isFinite(outdoorValue)?outdoorValue:null;
         const activePlan=s.active_schedule?this._hass.states[s.active_schedule]:null;
-        const planStatus=!s.active_schedule?'Aucun planning choisi':!activePlan||!['on','off'].includes(activePlan.state)?'Planning indisponible':activePlan.state==='off'?'Hors plage : Éco':activePlan.attributes?.profil&&PROFILES[activePlan.attributes.profil]?`Plage actuelle : ${PROFILES[activePlan.attributes.profil]}`:'Plage active sans profil défini';
+        const planStatus=!s.active_schedule?'Aucun planning choisi':!activePlan||!['on','off'].includes(activePlan.state)?'Planning indisponible':activePlan.state==='off'?'Hors plage : Éco':activePlan.attributes?.profil&&PROFILES[activePlan.attributes.profil]?`Plage actuelle : ${PROFILES[activePlan.attributes.profil]}`:s.temperature_sets?.[activePlan.attributes?.profil]?`Plage actuelle : ${s.temperature_sets[activePlan.attributes.profil].name}`:'Plage active sans profil défini';
         const headline=relayState==='on'&&heatingCount>0?`Chauffage demandé par ${heatingCount} ${heatingCount===1?'vanne':'vannes'}`:!s.enabled?'Chauffage arrêté':s.absent?'Maison absente':esc(s.schedules.find(p=>p.entity===s.active_schedule)?.name||'Choisir un planning');
         content=`<section class="home-shell">
           <header class="hero ${relayState==='on'?'heating':''}">
@@ -222,7 +222,7 @@
       if(roomForm){const current=rooms.find(r=>r.id===this.selected);if(q('#mode'))q('#mode').value=current?.mode||'planning';if(q('#room-entity'))q('#room-entity').value=current?.entity||'';if(q('#last-seen'))q('#last-seen').value=current?.last_seen||'';if(q('#pause-entity'))q('#pause-entity').value=current?.pause_entity||'';}
       if(settings){q('#relay').value=s.relay;q('#anticipation-window').value=String(s.anticipation_window_days);q('#outdoor-sensor').value=s.outdoor_sensor||'';all('#schedules option').forEach(o=>o.selected=s.schedules.some(p=>p.entity===o.value));}
       if(q('#active-plan'))q('#active-plan').value=s.active_schedule;
-      if(q('#planner')){if(customElements.get('chauffage-planning-card')){const card=document.createElement('chauffage-planning-card');card.addEventListener('chauffage-planning-saved',()=>{this.navigate('home');this.note('Planning enregistré.');});card.setConfig({schedules:s.schedules,active_schedule:s.active_schedule});card.hass=this._hass;q('#planner').append(card);}else q('#planner').textContent='Chargez aussi la ressource chauffage-planning-card.js.';}
+      if(q('#planner')){if(customElements.get('chauffage-planning-card')){const card=document.createElement('chauffage-planning-card');card.addEventListener('chauffage-planning-saved',()=>{this.navigate('home');this.note('Planning enregistré.');});card.addEventListener('chauffage-temperature-set-saved',async()=>{await this.refresh();this.navigate('home');this.note('Jeu de températures enregistré.');});card.setConfig({schedules:s.schedules,active_schedule:s.active_schedule,rooms,temperature_sets:s.temperature_sets||{},revision:m.revision});card.hass=this._hass;q('#planner').append(card);}else q('#planner').textContent='Chargez aussi la ressource chauffage-planning-card.js.';}
     }
   }
   if(!customElements.get('ma-maison-chauffage-card'))customElements.define('ma-maison-chauffage-card',MaMaisonCard);
