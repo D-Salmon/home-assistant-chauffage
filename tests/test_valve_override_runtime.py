@@ -139,6 +139,36 @@ class ValveOverrideRuntimeTests(unittest.TestCase):
         self.assertIsNone(self.runtime.data["rooms"][0]["override"])
         self.runtime.store.async_save.assert_awaited_once()
 
+    def test_planning_preview_does_not_interrupt_active_override(self):
+        self.runtime.data["settings"].update(active_schedule="schedule.week", anticipation_enabled=True)
+        self.runtime.schedule_data = {}
+        self.runtime.schedule_data_at = 1100
+        self.runtime.last_notice = ""
+        self.runtime.status = {}
+        self.runtime.persist = AsyncMock()
+        self.runtime.service = AsyncMock()
+        self.runtime.snapshot = lambda entity: {
+            "schedule.week": {"state": "on", "attributes": {"profil": "confort"}},
+            "climate.chambre": {"state": "heat", "attributes": {"temperature": 20, "hvac_action": "idle"}},
+            "switch.boiler": {"state": "off", "attributes": {}},
+        }.get(entity)
+        with patch.object(runtime_module.time, "time", return_value=1100), patch.object(
+            runtime_module, "estimate_minutes", return_value=(30, 0)
+        ):
+            complete(self.runtime.control_tick())
+        room = self.runtime.status["rooms"][0]
+        self.assertEqual((room["target"], room["profile"]), (20.0, "manuel"))
+        self.assertEqual((room["planning_target"], room["planning_profile"]), (20.0, "confort"))
+        self.assertEqual(self.runtime.status["faults"], [])
+        self.runtime.data["rooms"][0]["override"] = None
+        with patch.object(runtime_module.time, "time", return_value=1101), patch.object(
+            runtime_module, "estimate_minutes", return_value=(30, 0)
+        ):
+            complete(self.runtime.control_tick())
+        self.assertEqual((self.runtime.status["rooms"][0]["target"], self.runtime.status["rooms"][0]["profile"]),
+                         (20.0, "confort"))
+        self.assertEqual(self.runtime.status["faults"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

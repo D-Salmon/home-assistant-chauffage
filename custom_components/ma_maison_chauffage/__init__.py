@@ -261,6 +261,13 @@ class HeatingRuntime:
                 and not (room.get("override") and room["override"]["until"] > now)
                 and value is not None):
             return value, profile
+        try:
+            return self.anticipated_target(room, settings, value, profile, now)
+        except Exception:
+            _LOGGER.warning("Anticipation indisponible pour %s ; profil courant conservé", room["entity"], exc_info=True)
+            return value, profile
+
+    def anticipated_target(self, room, settings, value, profile, now):
         next_time, next_profile = upcoming_block(self.schedule_data, dt_util.now())
         if next_time is None:
             return value, profile
@@ -403,7 +410,11 @@ class HeatingRuntime:
                 paused = self.room_paused(room, now)
                 value, profile = (None, "pause") if paused else self.desired_target(room, schedule, now)
                 planning_room = {**room, "mode": "planning", "override": None}
-                planning_value, planning_profile = self.desired_target(planning_room, schedule, now)
+                try:
+                    planning_value, planning_profile = target(planning_room, s, schedule, now)
+                except Exception:
+                    _LOGGER.warning("Aperçu du planning indisponible pour %s", room["entity"], exc_info=True)
+                    planning_value, planning_profile = None, "planning indisponible"
                 attrs = state["attributes"] if state else {}
                 current_temp = attrs.get("current_temperature")
                 learned = self.learning.get(room["id"], [])

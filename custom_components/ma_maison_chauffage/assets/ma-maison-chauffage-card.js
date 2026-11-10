@@ -32,7 +32,7 @@
           if(q('.valve-feedback'))q('.valve-feedback').textContent=this.valveFeedback(room,activeOverride?.temperature??live.target);
           q('.room-detail .hero-status strong').textContent=live.paused?'Chauffage en pause':live.fault||(!this.model.settings.enabled?'Chauffage arrêté':heating?'Chauffage en cours':'Chauffage en attente');
           q('.room-detail .hero-status small').textContent=MODES[live.profile]||live.profile||MODES[room.mode]||room.mode;
-          if(q('.planning-preview'))q('.planning-preview').textContent=`Mode actuel : ${MODES[live.profile]||live.profile||MODES[room.mode]||room.mode} · Retour attendu : ${MODES[live.planning_profile]||live.planning_profile||'En attente'} à ${temp(live.planning_target)}`;
+          if(q('.planning-preview'))q('.planning-preview').textContent=`Mode actuel : ${MODES[live.profile]||live.profile||MODES[room.mode]||room.mode} · Planning actuel : ${MODES[live.planning_profile]||live.planning_profile||'En attente'} à ${temp(live.planning_target)}`;
           q('.room-detail .hero').classList.toggle('heating',heating);
         }
         return;
@@ -122,7 +122,7 @@
                 <circle class="dial-thumb" cx="${thumbX}" cy="${thumbY}" r="10"></circle>
               </svg><div class="dial-center"><div class="dial-adjust"><button type="button" id="override-minus" aria-label="Diminuer la consigne temporaire de 0,5 °C" ${!canOverride||overrideValue<=5?'disabled':''}>−</button><strong class="dial-readout" aria-live="polite">${temp(overrideValue)}</strong><button type="button" id="override-plus" aria-label="Augmenter la consigne temporaire de 0,5 °C" ${!canOverride||overrideValue>=25?'disabled':''}>+</button></div><span class="dial-caption">Consigne souhaitée</span></div><div class="dial-limits"><span>5 °C</span><span>25 °C</span></div></div>
               <div class="profiles override-fields"><div><label for="override-temp">Température précise (°C)</label><input id="override-temp" name="temperature" type="number" min="5" max="25" step="0.5" value="${overrideValue}" ${canOverride?'':'disabled'} required></div><div><label for="hours">Durée (h)</label><input id="hours" name="hours" type="number" min="0.5" max="12" step="0.5" value="3" ${canOverride?'':'disabled'} required></div></div>
-              <div class="actions"><button class="primary" type="submit" ${canOverride?'':'disabled'}>Appliquer</button><button type="button" id="resume">Retour au planning</button><span class="planning-preview">Mode actuel : ${esc(profile)} · Retour attendu : ${esc(planningProfile)} à ${temp(live.planning_target)}</span></div>${canOverride?'':'<p class="override-unavailable">Pour appliquer une consigne temporaire, activez le chauffage et quittez l’absence maison.</p>'}</form>
+              <div class="actions"><button class="primary" type="submit" ${canOverride?'':'disabled'}>Appliquer</button><button type="button" id="resume">Retour au planning</button><span class="planning-preview">Mode actuel : ${esc(profile)} · Planning actuel : ${esc(planningProfile)} à ${temp(live.planning_target)}</span></div>${canOverride?'':'<p class="override-unavailable">Pour appliquer une consigne temporaire, activez le chauffage et quittez l’absence maison.</p>'}</form>
           </div></section>`;
       }
       return `<form id="room-form"><h2>${editing?(room.id?'Modifier la pièce':'Ajouter une pièce'):esc(room.name)}</h2>
