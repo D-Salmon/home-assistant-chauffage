@@ -90,6 +90,17 @@ class FixedModeOverrideTests(unittest.TestCase):
                                       {"state": "off", "attributes": {}}, 1100),
                          (17.0, "eco"))
 
+    def test_return_to_planning_from_night_mode_uses_active_comfort_period(self):
+        night = model.change(self.data, "save_room", {
+            "id": self.room_id, "name": "Chambre", "entity": "climate.chambre",
+            "mode": "nuit", "temperatures": self.data["rooms"][0]["temperatures"],
+        }, 1000)
+        resumed = model.change(night, "resume", {"id": self.room_id, "mode": "planning"}, 1100)
+        self.assertEqual(resumed["rooms"][0]["mode"], "planning")
+        self.assertEqual(model.target(resumed["rooms"][0], resumed["settings"],
+                                      {"state": "on", "attributes": {"profil": "confort"}}, 1100),
+                         (23.0, "confort"))
+
     def test_absence_blocks_temporary_setpoint(self):
         self.data["settings"]["absent"] = True
         with self.assertRaisesRegex(ValueError, "absence maison"):
