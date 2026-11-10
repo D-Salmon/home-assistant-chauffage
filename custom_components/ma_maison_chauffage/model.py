@@ -11,7 +11,7 @@ DEFAULT_TEMPS = dict(confort=20.0, eco=17.0, nuit=17.0, absent=14.0)
 def initial_data():
     return {"revision": 0, "rooms": [], "settings": {
         "enabled": False, "absent": False, "relay": "", "schedules": [], "house_name": "Ma maison",
-        "active_schedule": "", "confirm_seconds": 30, "stop_seconds": 30,
+        "active_schedule": "", "temperature_sets": {}, "confirm_seconds": 30, "stop_seconds": 30,
         "minimum_off": 180, "freshness_minutes": 120,
         "anticipation_enabled": True, "anticipation_window_days": 14, "outdoor_sensor": "",
     }}
@@ -104,6 +104,8 @@ def change(data, operation, payload, now):
             raise ValueError("Pièce introuvable.")
         if operation == "remove_room":
             rooms.remove(room)
+            for item in settings.get("temperature_sets", {}).values():
+                item["temperatures"].pop(room["id"], None)
         elif operation == "resume":
             mode = payload.get("mode", room["mode"])
             if mode not in ("planning", *PROFILES):
@@ -115,8 +117,25 @@ def change(data, operation, payload, now):
                 raise ValueError("Activez le chauffage et quittez l’absence maison.")
             room["override"] = {"temperature": temperature(payload.get("temperature")),
                                 "until": now + number(payload.get("hours"), .5, 12) * 3600}
+    elif operation == "save_temperature_set":
+        if set(payload) != {"id", "name", "temperatures"}:
+            raise ValueError("Jeu de températures invalide.")
+        set_id = payload["id"]
+        if set_id is not None and (not isinstance(set_id, str) or not re.fullmatch(r"set_[a-f0-9]{32}", set_id) or set_id not in settings.get("temperature_sets", {})):
+            raise ValueError("Jeu de températures introuvable.")
+        values = payload["temperatures"]
+        if not isinstance(values, dict) or set(values) != {room["id"] for room in rooms}:
+            raise ValueError("Renseignez la température de chaque pièce.")
+        set_id = set_id or "set_" + uuid.uuid4().hex
+        name = label(payload["name"])
+        names = {"confort", "éco", "eco", "nuit", "absent"}
+        names.update(item["name"].casefold() for key, item in settings.get("temperature_sets", {}).items() if key != set_id)
+        if name.casefold() in names:
+            raise ValueError("Ce nom de jeu est déjà utilisé.")
+        settings.setdefault("temperature_sets", {})[set_id] = {"name": name,
+                                                               "temperatures": {room_id: temperature(value) for room_id, value in values.items()}}
     elif operation == "settings":
-        if set(payload) - set(settings):
+        if set(payload) - set(settings) or "temperature_sets" in payload:
             raise ValueError("Réglage inconnu.")
         previous = deepcopy(settings)
         settings.update(payload)
@@ -172,9 +191,12 @@ def target(room, settings, schedule, now):
         profile = (schedule.get("attributes", {}).get("profil") or "confort") if schedule["state"] == "on" else "eco"
     else:
         return None, "planning indisponible"
-    if profile not in PROFILES:
-        return None, "profil invalide"
-    return room["temperatures"][profile], profile
+    if profile in PROFILES:
+        return room["temperatures"][profile], profile
+    custom = settings.get("temperature_sets", {}).get(profile)
+    if custom:
+        return custom.get("temperatures", {}).get(room["id"], room["temperatures"]["eco"]), custom["name"]
+    return None, "profil invalide"
 
 
 def supported_temperature(attributes, value):

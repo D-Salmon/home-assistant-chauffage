@@ -258,6 +258,9 @@ class HeatingRuntime:
         value, profile = target(room, settings, schedule, now)
         if not (settings["enabled"] and settings["anticipation_enabled"] and not settings["absent"]
                 and room["mode"] == "planning"
+                and not any((block.get("data") or {}).get("profil") in settings.get("temperature_sets", {})
+                            for day in ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+                            for block in (self.schedule_data or {}).get(day, []))
                 and not (room.get("override") and room["override"]["until"] > now)
                 and value is not None):
             return value, profile
