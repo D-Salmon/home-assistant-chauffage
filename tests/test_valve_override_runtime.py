@@ -70,6 +70,8 @@ class ValveOverrideRuntimeTests(unittest.TestCase):
         self.runtime.sent_setpoints = {self.room_id: [(20, 1000)]}
         self.runtime.tasks = {}
         self.runtime.retry_after = {}
+        self.runtime.command_errors = {}
+        self.runtime.reset = False
         self.runtime.memory = {}
         self.runtime.learning = {}
         self.runtime.store = SimpleNamespace(async_save=AsyncMock())
@@ -120,6 +122,22 @@ class ValveOverrideRuntimeTests(unittest.TestCase):
         self.assertEqual(self.runtime.data["rooms"][0]["override"], {"temperature": 20.0, "until": 11800})
         self.runtime.store.async_save.assert_not_awaited()
         self.runtime.tick.assert_awaited_once()
+
+    def test_return_to_planning_ignores_late_old_setpoint(self):
+        self.runtime.sent_setpoints[self.room_id] = []
+        self.runtime.hass.auth = SimpleNamespace(async_get_user=AsyncMock(return_value=SimpleNamespace(is_admin=True)))
+        call = SimpleNamespace(context=SimpleNamespace(user_id="admin"), data={
+            "revision": self.runtime.data["revision"], "operation": "resume",
+            "payload": {"id": self.room_id, "mode": "planning"},
+        })
+        with patch.object(runtime_module.time, "time", return_value=1100):
+            complete(self.runtime.command(call))
+        self.assertIsNone(self.runtime.data["rooms"][0]["override"])
+        self.assertEqual(self.runtime.sent_setpoints[self.room_id], [(20.0, 1100)])
+        with patch.object(runtime_module.time, "time", return_value=1101):
+            complete(self.runtime.adopt_valve_setpoint(self.room_id, 20))
+        self.assertIsNone(self.runtime.data["rooms"][0]["override"])
+        self.runtime.store.async_save.assert_awaited_once()
 
 
 if __name__ == "__main__":

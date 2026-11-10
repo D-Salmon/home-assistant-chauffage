@@ -73,7 +73,7 @@ class HeatingRuntime:
         self.learning = {}
         self.schedule_data = None
         self.schedule_data_at = 0
-        self.status = {"rooms": [], "faults": [], "relay": "unknown"}
+        self.status = {"rooms": [], "faults": [], "relay": "unknown", "revision": 0}
         self.lock = asyncio.Lock()
         self.unsubs = []
         self.started = False
@@ -225,6 +225,15 @@ class HeatingRuntime:
                 raise ServiceValidationError(str(exc)) from exc
             # Durable save precedes replacing the live model and sending orders.
             await self.store.async_save({"configuration": deepcopy(new), "memory": deepcopy(self.memory), "learning": deepcopy(new_learning)})
+            if operation in ("override", "resume"):
+                room_id = call.data.get("payload", {}).get("id")
+                previous_room = next((room for room in self.data["rooms"] if room["id"] == room_id), None)
+                next_room = next((room for room in new["rooms"] if room["id"] == room_id), None)
+                expected = (next_room or {}).get("override") if operation == "override" else (previous_room or {}).get("override")
+                if expected:
+                    recent = [(sent, at) for sent, at in self.sent_setpoints.get(room_id, []) if time.time() - at < 120]
+                    recent.append((expected["temperature"], time.time()))
+                    self.sent_setpoints[room_id] = recent
             self.data = new
             self.learning = new_learning
             if settings["active_schedule"] != previous["active_schedule"]:
@@ -393,6 +402,8 @@ class HeatingRuntime:
                 state = self.snapshot(room["entity"])
                 paused = self.room_paused(room, now)
                 value, profile = (None, "pause") if paused else self.desired_target(room, schedule, now)
+                planning_room = {**room, "mode": "planning", "override": None}
+                planning_value, planning_profile = self.desired_target(planning_room, schedule, now)
                 attrs = state["attributes"] if state else {}
                 current_temp = attrs.get("current_temperature")
                 learned = self.learning.get(room["id"], [])
@@ -437,6 +448,7 @@ class HeatingRuntime:
                     heating.append(room["id"])
                 rows.append({"id": room["id"], "current_temperature": attrs.get("current_temperature"),
                              "temperature": attrs.get("temperature"), "target": value, "profile": profile,
+                             "planning_target": planning_value, "planning_profile": planning_profile,
                              "hvac_action": attrs.get("hvac_action"), "fault": fault,
                              "anticipation_minutes": round(warm_minutes), "anticipation_cool_minutes": round(cool_minutes),
                              "learning_samples": warm_count, "learning_cool_samples": cool_count,
@@ -456,7 +468,7 @@ class HeatingRuntime:
                     faults.append("Commande relais impossible : " + str(exc))
             if actual != memory["desired"] and memory["attempts"] >= 3 and now - memory["last_attempt"] >= 15:
                 faults.append("Relais non confirmé après trois tentatives. Vérifier puis cliquer Réessayer.")
-            self.status = {"rooms": rows, "faults": faults, "relay": actual, "requested": memory["desired"], "heating_count": len(heating)}
+            self.status = {"rooms": rows, "faults": faults, "relay": actual, "requested": memory["desired"], "heating_count": len(heating), "revision": self.data["revision"]}
             notice = "\n".join(faults)
             if notice != self.last_notice:
                 self.last_notice = notice

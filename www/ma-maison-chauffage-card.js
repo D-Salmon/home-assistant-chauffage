@@ -2,7 +2,7 @@
 (() => {
   const DOMAIN='ma_maison_chauffage';
   const PROFILES={confort:'Confort',eco:'Éco',nuit:'Nuit',absent:'Absent'};
-  const MODES={planning:'Planning',...PROFILES};
+  const MODES={planning:'Planning',manuel:'Manuel',...PROFILES};
   const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const temp=x=>typeof x==='number'&&Number.isFinite(x)?x.toLocaleString('fr-FR',{maximumFractionDigits:1})+' °C':'—';
   const dialPoint=value=>{const angle=(135+270*(value-5)/20)*Math.PI/180;return [120+90*Math.cos(angle),105+90*Math.sin(angle)];};
@@ -32,6 +32,7 @@
           if(q('.valve-feedback'))q('.valve-feedback').textContent=this.valveFeedback(room,activeOverride?.temperature??live.target);
           q('.room-detail .hero-status strong').textContent=live.paused?'Chauffage en pause':live.fault||(!this.model.settings.enabled?'Chauffage arrêté':heating?'Chauffage en cours':'Chauffage en attente');
           q('.room-detail .hero-status small').textContent=MODES[live.profile]||live.profile||MODES[room.mode]||room.mode;
+          if(q('.planning-preview'))q('.planning-preview').textContent=`Mode actuel : ${MODES[live.profile]||live.profile||MODES[room.mode]||room.mode} · Retour attendu : ${MODES[live.planning_profile]||live.planning_profile||'En attente'} à ${temp(live.planning_target)}`;
           q('.room-detail .hero').classList.toggle('heating',heating);
         }
         return;
@@ -58,7 +59,9 @@
       this.model=this.pendingSettings&&incoming
         ?{...incoming,revision:this.pendingSettings.revision,settings:{...incoming.settings,...this.pendingSettings.payload}}
         :incoming;
-      this.status=entry?.attributes?.status||{};this.homeName=this.model?.settings?.house_name||entry?.attributes?.house_name||'Ma maison';
+      const status=entry?.attributes?.status||{};
+      this.status=Number.isInteger(status.revision)&&incoming&&status.revision!==incoming.revision?{...status,rooms:[]}:status;
+      this.homeName=this.model?.settings?.house_name||entry?.attributes?.house_name||'Ma maison';
     }
     relayState(){return this._hass?.states?.[this.model?.settings?.relay]?.state??this.status?.relay;}
     valveFeedback(room,requested){
@@ -103,6 +106,7 @@
         const [thumbX,thumbY]=dialPoint(overrideValue);
         const state=live.paused?'Chauffage en pause':live.fault||(!this.model.settings.enabled?'Chauffage arrêté':heating?'Chauffage en cours':'Chauffage en attente');
         const profile=MODES[live.profile]||live.profile||MODES[room.mode]||room.mode;
+        const planningProfile=MODES[live.planning_profile]||live.planning_profile||'En attente';
         return `<section class="room-detail">
           <header class="hero ${heating?'heating':''}">
             <button type="button" id="room-back" class="room-back" aria-label="Retour à l’accueil">← Accueil</button>
@@ -118,7 +122,7 @@
                 <circle class="dial-thumb" cx="${thumbX}" cy="${thumbY}" r="10"></circle>
               </svg><div class="dial-center"><div class="dial-adjust"><button type="button" id="override-minus" aria-label="Diminuer la consigne temporaire de 0,5 °C" ${!canOverride||overrideValue<=5?'disabled':''}>−</button><strong class="dial-readout" aria-live="polite">${temp(overrideValue)}</strong><button type="button" id="override-plus" aria-label="Augmenter la consigne temporaire de 0,5 °C" ${!canOverride||overrideValue>=25?'disabled':''}>+</button></div><span class="dial-caption">Consigne souhaitée</span></div><div class="dial-limits"><span>5 °C</span><span>25 °C</span></div></div>
               <div class="profiles override-fields"><div><label for="override-temp">Température précise (°C)</label><input id="override-temp" name="temperature" type="number" min="5" max="25" step="0.5" value="${overrideValue}" ${canOverride?'':'disabled'} required></div><div><label for="hours">Durée (h)</label><input id="hours" name="hours" type="number" min="0.5" max="12" step="0.5" value="3" ${canOverride?'':'disabled'} required></div></div>
-              <div class="actions"><button class="primary" type="submit" ${canOverride?'':'disabled'}>Appliquer</button><button type="button" id="resume">Retour au planning</button></div>${canOverride?'':'<p class="override-unavailable">Pour appliquer une consigne temporaire, activez le chauffage et quittez l’absence maison.</p>'}</form>
+              <div class="actions"><button class="primary" type="submit" ${canOverride?'':'disabled'}>Appliquer</button><button type="button" id="resume">Retour au planning</button><span class="planning-preview">Mode actuel : ${esc(profile)} · Retour attendu : ${esc(planningProfile)} à ${temp(live.planning_target)}</span></div>${canOverride?'':'<p class="override-unavailable">Pour appliquer une consigne temporaire, activez le chauffage et quittez l’absence maison.</p>'}</form>
           </div></section>`;
       }
       return `<form id="room-form"><h2>${editing?(room.id?'Modifier la pièce':'Ajouter une pièce'):esc(room.name)}</h2>
@@ -168,6 +172,7 @@
 .room-card{padding:0;overflow:hidden}.room-card #message{margin:0 20px}.room-detail .hero{border-radius:0 0 28px 28px;padding:22px 24px 24px;margin:0;background:linear-gradient(160deg,#1b318d,#3d79f5);color:white}.room-detail .hero.heating{background:linear-gradient(160deg,#8b1727,#e34842)}.room-back{border:0;background:#ffffff26;color:white;min-height:36px;padding:7px 12px;margin-bottom:20px;font-size:14px}.room-detail .hero-title{margin-bottom:22px}.room-detail .hero-house{display:grid;place-items:center}.room-detail-summary{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:14px}.room-detail-summary>div{padding:14px;border-radius:18px;background:#12235b88;min-width:0}.room-detail-summary span{display:block;font-size:13px;font-weight:600}.room-detail-summary strong{display:block;font-size:clamp(23px,6vw,32px);margin-top:4px;white-space:nowrap}.room-detail .hero-status{background:#12235b88}.room-detail-body{padding:24px}.room-detail-body h3{font-size:20px;margin:0 0 10px}.room-detail-body p{margin:0 0 14px}.room-detail-body .actions{margin-bottom:0}.room-detail-body .primary{font-weight:700}.room-detail-override{padding-bottom:24px;border-bottom:1px solid var(--divider-color)}.room-detail-profiles{padding-top:24px}.room-detail-body .override-until{margin:14px 0 0;font-weight:600}.room-card .nav{margin:0;padding:12px 18px 16px}.room-card .nav button{border:0;background:transparent;color:var(--secondary-text-color)}@media(max-width:420px){.room-detail .hero{padding-left:18px;padding-right:18px}.room-detail-body{padding:20px 18px}.room-detail-summary strong{font-size:23px}}
 .dial-wrap{position:relative;width:min(100%,240px);margin:8px auto 16px}.temperature-dial{display:block;width:100%;height:auto;touch-action:none;cursor:pointer;overflow:visible}.temperature-dial[aria-disabled="true"]{opacity:.5;cursor:default}.temperature-dial:focus-visible{outline:3px solid var(--primary-color);outline-offset:2px;border-radius:18px}.dial-track,.dial-fill{fill:none;stroke-width:13;stroke-linecap:round}.dial-track{stroke:var(--divider-color,#e5e7eb)}.dial-fill{stroke:#91d49d}.dial-thumb{fill:#fff;stroke:#57b96a;stroke-width:4;filter:drop-shadow(0 2px 4px #0003)}.dial-center{position:absolute;top:51%;left:0;width:100%;transform:translateY(-50%);text-align:center;pointer-events:none}.dial-adjust{display:flex;align-items:center;justify-content:center;gap:4px}.dial-adjust button{display:grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border-radius:50%;border-color:#91d49d;background:var(--ha-card-background,var(--card-background-color));color:var(--primary-text-color);font-size:26px;font-weight:600;pointer-events:auto}.dial-readout{min-width:74px;font-size:22px;font-weight:700;white-space:nowrap;color:var(--primary-text-color)}.dial-caption{display:block;margin-top:3px;font-size:12px;color:var(--secondary-text-color)}.dial-limits{display:flex;justify-content:space-between;padding:0 18px;margin-top:-12px;font-size:12px;color:var(--secondary-text-color)}.override-fields{margin-top:10px}
 .resume-control{padding:14px;margin:12px 0 18px;border-radius:16px;background:var(--secondary-background-color,#f3f5f8)}.room-detail-body .resume-control .override-until{margin:0 0 8px}.resume-control label{margin:0 0 6px}.resume-picker{display:flex;gap:8px}.resume-picker select{flex:1;min-width:0}.resume-picker button{flex:0 0 auto;font-weight:700}@media(max-width:420px){.resume-picker{flex-direction:column}}
+.planning-preview{display:block;flex:1 1 180px;min-width:0;align-self:center;font-size:12px;line-height:1.4;color:var(--secondary-text-color)}
 .rooms-panel .room-icon.heating{animation:none;background:#fff0ef;color:#d6322e}.rooms-panel .room-icon.heating ha-icon{color:#d6322e;animation:heat-pulse 1.1s ease-in-out infinite;transform-origin:center;will-change:transform}@media(prefers-reduced-motion:reduce){.rooms-panel .room-icon.heating ha-icon{animation:none;filter:none;opacity:1}}
       </style><ha-card class="${this.view==='home'?'home-card':this.view==='room'?'room-card':''}">${content}<div id="message" role="status" aria-live="polite">${esc(this.message||(this.status.faults||[]).join('\n'))}</div><div class="nav">${[['home','Accueil'],['planning','Plannings'],['manage','Pièces'],['settings','Réglages']].map(([v,l])=>`<button data-nav="${v}" aria-pressed="${this.view===v}">${l}</button>`).join('')}</div></ha-card>`;
       const q=s=>this.shadowRoot.querySelector(s),all=s=>this.shadowRoot.querySelectorAll(s);
