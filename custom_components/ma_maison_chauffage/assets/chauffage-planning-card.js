@@ -38,7 +38,7 @@
   }
   class ChauffagePlanningCard extends HTMLElement {
     constructor(){super();this.attachShadow({mode:'open'});this.day='monday';this.index=0;this.dirty=false;this.busy=false;this.message='';}
-    setConfig(config){if(!Array.isArray(config.schedules)||!config.schedules.length)throw new Error('Renseigner schedules : name et entity.');this.config=config;this.ready=false;this.render();if(this._hass)this.load();}
+    setConfig(config){if(!Array.isArray(config.schedules)||!config.schedules.length)throw new Error('Renseigner schedules : name et entity.');this.config=config;this.index=Math.max(0,config.schedules.findIndex(s=>s.entity===config.active_schedule));this.ready=false;this.render();if(this._hass)this.load();}
     set hass(hass){this._hass=hass;if(this.config&&!this.ready&&!this.busy)this.load();}
     getCardSize(){return 8;}
     async load(){

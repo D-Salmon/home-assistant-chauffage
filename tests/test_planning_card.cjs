@@ -17,6 +17,10 @@ vm.runInNewContext(fs.readFileSync('configuration/chauffage-planning-card.js', '
 });
 
 const Card = registry.get('chauffage-planning-card');
+const selected = new Card();
+selected.render = () => {};
+selected.setConfig({schedules:[{entity:'schedule.classique'},{entity:'schedule.weekend'}],active_schedule:'schedule.weekend'});
+assert.equal(selected.index, 1);
 const original = {id:'weekday',monday:[{from:'07:00',to:'08:00',data:{profil:'confort'}}]};
 const card = new Card();
 card.events = [];
