@@ -96,8 +96,8 @@
       let ranges;
       try{ranges=blocks.map(block=>[minutes(block.from),minutes(block.to,true)]);}catch(error){this.message=error.message;this.render();return;}
       const candidates=[...Array.from({length:36},(_,i)=>360+i*30),...Array.from({length:12},(_,i)=>i*30)];
-      const from=candidates.find(start=>start+60<=1440&&ranges.every(([left,right])=>start+60<=left||start>=right));
-      if(from===undefined){this.message='La journée est déjà remplie. Modifiez ou supprimez une plage avant d’en ajouter une.';this.render();return;}
+      const from=candidates.find(start=>start+60<=1440&&ranges.every(([left,right])=>start+60<=left||start>=right))??720;
+      this.dirtyBeforeAdd=this.dirty;
       blocks.push({from:formatTime(from),to:formatTime(from+60),data:{profil:'confort'}});this.editIndex=blocks.length-1;this.newBlock=true;this.screen='block';this.dirty=true;this.render();
     }
     render(){
@@ -108,6 +108,11 @@
       const disabled=this.busy?'disabled':'';
       const temperature=(room,profile)=>Object.hasOwn(PROFILES,profile)?room.temperatures?.[profile]:sets[profile]?.temperatures?.[room.id]??room.temperatures?.eco;
       const roomRows=profile=>`<div class="room-list">${rooms.map(room=>`<div class="room-row"><span>${esc(room.name)}</span><strong>${esc(temperature(room,profile)??'—')} °C</strong></div>`).join('')}</div>`;
+      const palette=['#f4a340','#6887ed','#4aaf93','#dc8c55','#aa79dc','#4baec9'];
+      const profileColor=profile=>({confort:'#f4a340',eco:'#73b69a',nuit:'#6487e9',absent:'#97a0b1'})[profile]||palette[[...profile].reduce((sum,char)=>sum+char.charCodeAt(0),0)%palette.length];
+      const profileSymbol=profile=>({confort:'⌂',eco:'♧',nuit:'☾',absent:'○'})[profile]||String(names[profile]||'?').trim().slice(0,1).toUpperCase();
+      const badge=profile=>`<span class="profile-badge" style="--profile-color:${profileColor(profile)}" aria-hidden="true">${esc(profileSymbol(profile))}</span>`;
+      const timeline=`<div class="day-scale" aria-hidden="true"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span></div><div class="day-track" aria-label="Plages de la journée">${blocks.map((block,i)=>{try{const start=minutes(block.from),end=minutes(block.to,true),profile=block.data?.profil??'confort';return `<button type="button" class="time-segment" data-open-block="${i}" aria-label="${esc(block.from.slice(0,5))} à ${esc(block.to.slice(0,5))} : ${esc(names[profile]||'Jeu inconnu')}" style="left:${start/14.4}%;width:${(end-start)/14.4}%;--profile-color:${profileColor(profile)}" ${disabled}></button>`;}catch{return '';}}).join('')}</div>`;
       const back='<button type="button" id="back" class="back">← Retour</button>';
       const picker=`<label for="plan">Planning</label><select id="plan" ${disabled}>${this.config.schedules.map((item,i)=>`<option value="${i}" ${i===this.index?'selected':''}>${esc(item.name)}</option>`).join('')}</select>`;
       const dayPicker=`<div class="days" aria-label="Jour">${DAYS.map((day,i)=>`<button type="button" data-day="${day}" aria-pressed="${this.screen==='overview'&&this.day===day}" ${disabled}>${LABELS[i].slice(0,3)}</button>`).join('')}</div>`;
@@ -115,23 +120,23 @@
       if(this.screen==='choose'){
         body=`<h2>Mes plannings</h2>${picker}<p class="hint">Choisissez un jour pour voir ses plages horaires.</p>${dayPicker}`;
       }else if(this.screen==='sets'){
-        body=`${back}<h2>Jeux de températures</h2><p class="hint">Chaque jeu définit une température pour chaque pièce. Il peut être utilisé dans plusieurs plages du planning.</p>${Object.entries(sets).map(([id,item])=>`<button type="button" class="set-choice" data-open-set="${esc(id)}" ${disabled}><strong>${esc(item.name)}</strong><span>Modifier ›</span></button>`).join('')}<button type="button" class="add" id="new-set" ${disabled}>+ Créer un jeu</button>`;
+        body=`${back}<h2>Jeux de températures</h2><p class="hint">Chaque jeu définit une température pour chaque pièce. Il peut être utilisé dans plusieurs plages du planning.</p>${Object.entries(sets).map(([id,item])=>`<button type="button" class="set-choice" data-open-set="${esc(id)}" ${disabled}>${badge(id)}<strong>${esc(item.name)}</strong><span>Modifier ›</span></button>`).join('')}<button type="button" class="add" id="new-set" ${disabled}>+ Créer un jeu</button>`;
       }else if(this.screen==='block'&&this.draft){
         const block=blocks[this.editIndex];
         if(!block){this.screen='overview';return this.render();}
         const profile=block.data?.profil??'confort';
         body=`${back}<h2>${this.newBlock?'Ajouter une plage horaire':'Modifier une plage horaire'}</h2>
-          <div class="field-row"><div><label for="from">Début</label><input id="from" value="${esc(block.from)}" placeholder="07:00" ${disabled}></div><div><label for="to">Fin</label><input id="to" value="${esc(block.to)}" placeholder="24:00" ${disabled}></div></div>
-          <h3>Jeu de températures</h3><div class="choices">${Object.entries(names).map(([id,name])=>`<button type="button" data-profile="${esc(id)}" class="choice ${profile===id?'chosen':''}" aria-pressed="${profile===id}" ${disabled}>${esc(name)}</button>`).join('')}</div>
-          ${roomRows(profile)}<div class="actions"><button type="button" class="primary" id="block-done" ${disabled}>Valider la plage</button><button type="button" id="block-delete" ${disabled}>Supprimer la plage</button></div><p class="hint">Après validation, enregistrez le planning pour appliquer les horaires.</p>`;
+          <div class="field-row"><div><label for="from">Début</label><input id="from" inputmode="numeric" value="${esc(block.from)}" placeholder="07:00" ${disabled}></div><div><label for="to">Fin</label><input id="to" inputmode="numeric" value="${esc(block.to)}" placeholder="24:00" ${disabled}></div></div>
+          <h3>Jeu de températures</h3><div class="choices">${Object.entries(names).map(([id,name])=>`<button type="button" data-profile="${esc(id)}" class="choice ${profile===id?'chosen':''}" aria-pressed="${profile===id}" ${disabled}>${badge(id)}<strong>${esc(name)}</strong><span class="choice-check" aria-hidden="true">${profile===id?'✓':'○'}</span></button>`).join('')}</div>
+          ${roomRows(profile)}<div class="actions"><button type="button" class="primary" id="block-done" ${disabled}>Valider la plage</button><button type="button" id="block-delete" ${disabled}>${this.newBlock?'Annuler':'Supprimer la plage'}</button></div><p class="hint">${this.newBlock?'Si une plage existe déjà à ces heures, elle sera conservée avant et après la nouvelle plage. ':''}Après validation, enregistrez le planning pour appliquer les horaires.</p>`;
       }else if(this.screen==='set'){
         body=`${back}<h2>${this.setId?'Modifier les températures':'Nouveau jeu de températures'}</h2><label for="set-name">Nom du jeu</label><input id="set-name" maxlength="80" value="${esc(this.setDraft?.name??'')}" ${disabled}>
           <h3>Température des pièces</h3><p class="hint">Ces valeurs s’appliquent à toutes les plages qui utilisent ce jeu.</p>
-          ${rooms.map(room=>`<div class="set-room"><label for="set-room-${esc(room.id)}">${esc(room.name)}</label><input id="set-room-${esc(room.id)}" type="number" min="5" max="25" step="0.5" data-set-room="${esc(room.id)}" value="${esc(this.setDraft?.temperatures?.[room.id]??room.temperatures?.eco??17)}" ${disabled}></div>`).join('')}
+          ${rooms.map(room=>{const value=this.setDraft?.temperatures?.[room.id]??room.temperatures?.eco??17;return `<div class="set-room"><div class="set-room-head"><label for="set-room-${esc(room.id)}">${esc(room.name)}</label><input id="set-room-${esc(room.id)}" type="number" min="5" max="25" step="0.5" data-set-room="${esc(room.id)}" value="${esc(value)}" ${disabled}><span>°C</span></div><input type="range" min="5" max="25" step="0.5" data-range-room="${esc(room.id)}" aria-label="Température de ${esc(room.name)}" style="--fill:${(Number(value)-5)*5}%" value="${esc(value)}" ${disabled}><div class="range-scale"><span>5 °C</span><span>25 °C</span></div></div>`;}).join('')}
           <div class="actions"><button type="button" class="primary" id="set-save" ${disabled}>Enregistrer le jeu</button><button type="button" id="set-cancel" ${disabled}>Annuler</button></div>`;
       }else{
         body=`${back}<h2>${esc(this.config.schedules[this.index].name)}</h2>${picker}${dayPicker}
-          ${this.draft?`<h3>${LABELS[DAYS.indexOf(this.day)]}</h3>${blocks.length?blocks.map((block,i)=>{const profile=block.data?.profil??'confort';return `<button type="button" class="period" data-open-block="${i}" ${disabled}><span class="period-time">◷ ${esc(block.from.slice(0,5))} – ${esc(block.to.slice(0,5))}</span><strong class="period-name">${esc(names[profile]||'Jeu inconnu')} <span aria-hidden="true">›</span></strong>${roomRows(profile)}</button>`;}).join(''):'<p class="hint">Aucune plage : température Éco toute la journée.</p>'}
+          ${this.draft?`<h3>${LABELS[DAYS.indexOf(this.day)]}</h3>${timeline}${blocks.length?blocks.map((block,i)=>{const profile=block.data?.profil??'confort';return `<button type="button" class="period" data-open-block="${i}" style="--profile-color:${profileColor(profile)}" ${disabled}><span class="period-time">◷ ${esc(block.from.slice(0,5))} – ${esc(block.to.slice(0,5))}</span><span class="period-title">${badge(profile)}<strong class="period-name">${esc(names[profile]||'Jeu inconnu')}</strong><span aria-hidden="true">›</span></span>${roomRows(profile)}</button>`;}).join(''):'<p class="hint">Aucune plage : température Éco toute la journée.</p>'}
           <button type="button" class="fab" id="add" aria-label="Ajouter une plage horaire" title="Ajouter une plage horaire" ${disabled}>+</button>
           <details><summary>Copier cette journée</summary><div class="copies">${DAYS.filter(day=>day!==this.day).map(day=>`<label><input type="checkbox" value="${day}" ${disabled}>${LABELS[DAYS.indexOf(day)].slice(0,3)}</label>`).join('')}</div><button type="button" id="copy" ${disabled}>Remplacer les jours cochés</button><div class="actions"><button type="button" id="copy-weekdays" ${disabled}>Appliquer aussi du lundi au vendredi</button></div></details>
           <div class="actions"><button type="button" class="primary" id="save" ${disabled}>Enregistrer le planning${this.dirty?' *':''}</button><button type="button" id="reload" ${disabled}>${this.dirty?'Annuler les modifications':'Recharger'}</button></div>`:`<button type="button" id="reload" ${disabled}>Réessayer</button>`}
@@ -141,9 +146,10 @@
         :host{display:block;color:var(--primary-text-color);font-family:system-ui,sans-serif}*{box-sizing:border-box}ha-card{padding:20px;border-radius:22px}h2{margin:8px 0 20px;font-size:24px}h3{margin:22px 0 12px;font-size:19px}label{display:block;font-size:14px;margin:10px 0 6px}
         select,input,button{font:inherit;color:inherit;background:var(--ha-card-background,var(--card-background-color));border:1px solid var(--divider-color);border-radius:12px;min-height:44px;padding:9px;max-width:100%}select,input{width:100%}button{cursor:pointer}button:disabled{opacity:.5}.primary,.add{background:#406bfa;color:white;border-color:#406bfa;font-weight:650}.add{width:100%;margin-top:12px}.back{border:0;background:var(--secondary-background-color);margin-bottom:8px}.days{display:flex;gap:4px;margin:18px 0;overflow-x:auto}.days button{flex:1;min-width:40px;padding:6px}.days [aria-pressed=true]{background:#406bfa;color:white;border-color:#406bfa}
         .period{display:block;width:100%;text-align:left;padding:16px;margin:12px 0;border-radius:16px}.period-time{display:block;color:var(--secondary-text-color);font-size:14px}.period-name{display:flex;justify-content:space-between;font-size:20px;margin:5px 0 12px}.room-list{border-top:1px solid var(--divider-color);padding-top:7px}.room-row{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:15px}.room-row strong{white-space:nowrap}.fab{display:grid;place-items:center;width:64px;height:64px;min-height:64px;margin:14px 0 14px auto;border-radius:50%;background:#406bfa;color:white;border-color:#406bfa;font-size:40px;line-height:1}.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}.choice{text-align:left}.choice.chosen{background:#406bfa;color:white;border-color:#406bfa}.set-room{display:grid;grid-template-columns:minmax(0,1fr) 95px;gap:12px;align-items:center;padding:8px 0}.set-room label{margin:0}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.hint,.status{font-size:13px;line-height:1.5;color:var(--secondary-text-color)}.status{margin-top:16px}.sets-open{width:100%;text-align:left;margin-top:20px}.set-choice{display:flex;justify-content:space-between;align-items:center;width:100%;margin:7px 0}.copies{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}.copies label{display:flex;align-items:center;gap:5px}.copies input{width:18px;min-height:20px}details{margin-top:18px}
+        .day-scale{display:flex;justify-content:space-between;color:var(--secondary-text-color);font-size:11px;margin-top:14px}.day-track{position:relative;height:34px;margin:5px 0 20px;border-radius:10px;overflow:hidden;background:#dfe8f4;background-image:linear-gradient(to right,#a9b9cb55 1px,transparent 1px);background-size:25% 100%}.time-segment{position:absolute;top:0;height:34px;min-height:34px;border:0;border-right:2px solid var(--ha-card-background,var(--card-background-color));border-radius:0;padding:0;background:var(--profile-color)}.time-segment:focus-visible{outline:3px solid #243ac2;outline-offset:-3px}.profile-badge{display:inline-grid;place-items:center;flex:none;width:34px;height:34px;border-radius:50%;background:var(--profile-color);color:white;font-size:21px;font-weight:700}.period{border-left:5px solid var(--profile-color)}.period-title{display:flex;align-items:center;gap:10px;margin:8px 0 10px}.period-title .period-name{display:block;flex:1;margin:0;font-size:19px}.choices{display:flex;flex-direction:column}.choice{display:flex;align-items:center;gap:12px;text-align:left;padding:10px}.choice strong{flex:1}.choice.chosen{background:color-mix(in srgb,#406bfa 12%,var(--ha-card-background,var(--card-background-color)));color:var(--primary-text-color);border:2px solid #406bfa}.choice-check{font-size:21px;color:#406bfa}.set-choice{justify-content:flex-start;gap:10px}.set-choice strong{flex:1;text-align:left}.set-room{display:block;padding:16px;margin:12px 0;border:1px solid var(--divider-color);border-radius:16px}.set-room-head{display:flex;align-items:center;gap:5px}.set-room-head label{flex:1}.set-room-head input{width:76px;text-align:right;font-weight:700}.set-room input[type=range]{display:block;width:100%;min-height:34px;height:34px;margin:12px 0 0;padding:0;border:0;accent-color:#406bfa;background:linear-gradient(to right,#406bfa var(--fill),#e5edff var(--fill));border-radius:20px;appearance:none}.set-room input[type=range]::-webkit-slider-thumb{appearance:none;width:23px;height:23px;border:3px solid white;border-radius:50%;background:#406bfa;box-shadow:0 1px 6px #0004}.range-scale{display:flex;justify-content:space-between;color:var(--secondary-text-color);font-size:11px}
       </style><ha-card>${body}${this.message?`<div class="status" role="status" aria-live="polite">${esc(this.message)}</div>`:''}</ha-card>`;
       const q=selector=>this.shadowRoot.querySelector(selector);
-      if(q('#back'))q('#back').onclick=()=>{if(this.screen==='set'&&this.setDirty){this.message='Enregistrez le jeu ou annulez ses modifications.';this.render();return;}this.screen=this.screen==='overview'?'choose':this.screen==='set'?'sets':'overview';this.render();};
+      if(q('#back'))q('#back').onclick=()=>{if(this.screen==='set'&&this.setDirty){this.message='Enregistrez le jeu ou annulez ses modifications.';this.render();return;}if(this.screen==='block'&&this.newBlock){this.draft[this.day].splice(this.editIndex,1);this.dirty=this.dirtyBeforeAdd;this.newBlock=false;}this.screen=this.screen==='overview'?'choose':this.screen==='set'?'sets':'overview';this.render();};
       if(q('#plan'))q('#plan').onchange=e=>{if(this.dirty||this.setDirty){e.target.value=this.index;this.message='Enregistrez ou annulez vos modifications avant de changer de planning.';this.render();return;}this.index=Number(e.target.value);this.screen='choose';this.load();};
       this.shadowRoot.querySelectorAll('[data-day]').forEach(button=>button.onclick=()=>{this.day=button.dataset.day;this.screen='overview';this.render();});
       this.shadowRoot.querySelectorAll('[data-open-block]').forEach(button=>button.onclick=()=>{this.editIndex=Number(button.dataset.openBlock);this.newBlock=false;this.screen='block';this.render();});
@@ -158,10 +164,41 @@
       if(q('#from'))q('#from').onchange=e=>{blocks[this.editIndex].from=e.value;this.dirty=true;};
       if(q('#to'))q('#to').onchange=e=>{blocks[this.editIndex].to=e.value;this.dirty=true;};
       this.shadowRoot.querySelectorAll('[data-profile]').forEach(button=>button.onclick=()=>{blocks[this.editIndex].data={...blocks[this.editIndex].data,profil:button.dataset.profile};this.dirty=true;this.render();});
-      if(q('#block-done'))q('#block-done').onclick=()=>{try{const block=blocks[this.editIndex],from=minutes(block.from),to=minutes(block.to,true);if(to<=from)throw new Error('La fin doit être après le début.');block.from=formatTime(from);block.to=formatTime(to);this.screen='overview';this.message='Plage prête. Enregistrez le planning pour l’appliquer.';this.render();}catch(error){this.message=error.message;this.render();}};
-      if(q('#block-delete'))q('#block-delete').onclick=()=>{blocks.splice(this.editIndex,1);this.dirty=true;this.screen='overview';this.render();};
+      if(q('#block-done'))q('#block-done').onclick=()=>{
+        try{
+          const block=blocks[this.editIndex],from=minutes(block.from),to=minutes(block.to,true);
+          if(to<=from)throw new Error('La fin doit être après le début.');
+          block.from=formatTime(from);block.to=formatTime(to);
+          if(this.newBlock){
+            const adjusted=[];
+            for(const [i,existing] of blocks.entries()){
+              if(i===this.editIndex)continue;
+              const left=minutes(existing.from),right=minutes(existing.to,true);
+              if(right<=from||left>=to){adjusted.push(existing);continue;}
+              if(left<from)adjusted.push({...existing,to:formatTime(from)});
+              if(right>to)adjusted.push({...existing,from:formatTime(to)});
+            }
+            adjusted.push(block);
+            adjusted.sort((a,b)=>minutes(a.from)-minutes(b.from));
+            this.draft[this.day]=adjusted;this.newBlock=false;
+          }else{
+            const sorted=[...blocks].sort((a,b)=>minutes(a.from)-minutes(b.from));
+            if(sorted.some((item,i)=>i>0&&minutes(item.from)<minutes(sorted[i-1].to,true)))throw new Error('Cette plage chevauche une autre plage.');
+          }
+          this.screen='overview';this.message='Plage prête. Enregistrez le planning pour l’appliquer.';this.render();
+        }catch(error){this.message=error.message;this.render();}
+      };
+      if(q('#block-delete'))q('#block-delete').onclick=()=>{blocks.splice(this.editIndex,1);this.dirty=this.newBlock?this.dirtyBeforeAdd:true;this.newBlock=false;this.screen='overview';this.render();};
       if(q('#set-name'))q('#set-name').oninput=e=>{this.setDraft.name=e.target.value;this.setDirty=true;};
-      this.shadowRoot.querySelectorAll('[data-set-room]').forEach(input=>input.onchange=()=>{this.setDraft.temperatures[input.dataset.setRoom]=Number(input.value);this.setDirty=true;});
+      const setTemperature=(roomId,value)=>{
+        this.setDraft.temperatures[roomId]=Number(value);this.setDirty=true;
+        const number=[...this.shadowRoot.querySelectorAll('[data-set-room]')].find(input=>input.dataset.setRoom===roomId);
+        const slider=[...this.shadowRoot.querySelectorAll('[data-range-room]')].find(input=>input.dataset.rangeRoom===roomId);
+        if(number&&number.value!==String(value))number.value=value;
+        if(slider){slider.value=value;slider.style.setProperty('--fill',`${(Number(value)-5)*5}%`);}
+      };
+      this.shadowRoot.querySelectorAll('[data-set-room]').forEach(input=>input.onchange=()=>setTemperature(input.dataset.setRoom,input.value));
+      this.shadowRoot.querySelectorAll('[data-range-room]').forEach(input=>input.oninput=()=>setTemperature(input.dataset.rangeRoom,input.value));
       if(q('#set-save'))q('#set-save').onclick=()=>this.saveSet();
       if(q('#set-cancel'))q('#set-cancel').onclick=()=>{this.setDirty=false;this.screen='sets';this.render();};
     }
