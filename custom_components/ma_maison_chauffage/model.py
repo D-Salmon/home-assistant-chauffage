@@ -134,6 +134,10 @@ def change(data, operation, payload, now):
             raise ValueError("Ce nom de jeu est déjà utilisé.")
         settings.setdefault("temperature_sets", {})[set_id] = {"name": name,
                                                                "temperatures": {room_id: temperature(value) for room_id, value in values.items()}}
+    elif operation == "remove_temperature_set":
+        if set(payload) != {"id"} or payload["id"] not in settings.get("temperature_sets", {}):
+            raise ValueError("Jeu de températures introuvable.")
+        del settings["temperature_sets"][payload["id"]]
     elif operation == "settings":
         if set(payload) - set(settings) or "temperature_sets" in payload:
             raise ValueError("Réglage inconnu.")

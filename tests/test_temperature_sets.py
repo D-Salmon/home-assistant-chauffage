@@ -37,6 +37,15 @@ class TemperatureSetTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "chaque pièce"):
             model.change(self.data, "save_temperature_set", {"id": None, "name": "Incomplet", "temperatures": {}}, 0)
 
+    def test_custom_set_can_be_removed_but_integrated_set_cannot(self):
+        self.data = model.change(self.data, "save_temperature_set", {"id": None, "name": "Pas d'enfants", "temperatures": {self.room["id"]: 17}}, 0)
+        set_id = next(iter(self.data["settings"]["temperature_sets"]))
+        changed = model.change(self.data, "remove_temperature_set", {"id": set_id}, 0)
+        self.assertNotIn(set_id, changed["settings"]["temperature_sets"])
+        self.assertIn(set_id, self.data["settings"]["temperature_sets"])
+        with self.assertRaisesRegex(ValueError, "introuvable"):
+            model.change(changed, "remove_temperature_set", {"id": "eco"}, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
