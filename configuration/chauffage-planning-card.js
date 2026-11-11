@@ -139,7 +139,7 @@
         if(!block){this.screen='overview';return this.render();}
         const profile=block.data?.profil??'confort';
         body=`${back}<h2>${this.newBlock?'Ajouter une plage horaire':'Modifier une plage horaire'}</h2>
-          <div class="field-row"><div><label for="from">Début</label><input id="from" inputmode="numeric" value="${esc(block.from)}" placeholder="07:00" ${disabled}></div><div><label for="to">Fin</label><input id="to" inputmode="numeric" value="${esc(block.to)}" placeholder="24:00" ${disabled}></div></div>
+          <div class="field-row"><div><label for="from">Début</label><input id="from" inputmode="text" value="${esc(block.from)}" placeholder="6:30" ${disabled}></div><div><label for="to">Fin</label><input id="to" inputmode="text" value="${esc(block.to)}" placeholder="8" ${disabled}></div></div><p class="hint">Exemples : 6 = 06:00 ; 6:30 = 06:30.</p>
           <h3>Jeu de températures</h3><div class="choices">${Object.entries(names).map(([id,name])=>`<button type="button" data-profile="${esc(id)}" class="choice ${profile===id?'chosen':''}" aria-pressed="${profile===id}" ${disabled}>${badge(id)}<strong>${esc(name)}</strong><span class="choice-check" aria-hidden="true">${profile===id?'✓':'○'}</span></button>`).join('')}</div>
           ${roomRows(profile)}<div class="actions"><button type="button" class="primary" id="block-done" ${disabled}>Valider la plage</button><button type="button" id="block-delete" ${disabled}>${this.newBlock?'Annuler':'Supprimer la plage'}</button></div><p class="hint">${this.newBlock?'Si une plage existe déjà à ces heures, elle sera conservée avant et après la nouvelle plage. ':''}Après validation, enregistrez le planning pour appliquer les horaires.</p>`;
       }else if(this.screen==='set'){
@@ -149,7 +149,7 @@
           <div class="actions"><button type="button" class="primary" id="set-save" ${disabled}>Enregistrer le jeu</button><button type="button" id="set-cancel" ${disabled}>Annuler</button></div>`;
       }else{
         body=`${back}<h2>${esc(this.config.schedules[this.index].name)}</h2>${picker}${dayPicker}
-          ${this.draft?`<h3>${LABELS[DAYS.indexOf(this.day)]}</h3>${timeline}${blocks.length?blocks.map((block,i)=>{const profile=block.data?.profil??'confort';return `<button type="button" class="period" data-open-block="${i}" style="--profile-color:${profileColor(profile)}" ${disabled}><span class="period-time">◷ ${esc(block.from.slice(0,5))} – ${esc(block.to.slice(0,5))}</span><span class="period-title">${badge(profile)}<strong class="period-name">${esc(names[profile]||'Jeu inconnu')}</strong><span aria-hidden="true">›</span></span>${roomRows(profile)}</button>`;}).join(''):'<p class="hint">Aucune plage : température Éco toute la journée.</p>'}
+          ${this.draft?`<h3>${LABELS[DAYS.indexOf(this.day)]}</h3>${blocks.length?timeline:''}${blocks.length?blocks.map((block,i)=>{const profile=block.data?.profil??'confort';return `<button type="button" class="period" data-open-block="${i}" style="--profile-color:${profileColor(profile)}" ${disabled}><span class="period-time">◷ ${esc(block.from.slice(0,5))} – ${esc(block.to.slice(0,5))}</span><span class="period-title">${badge(profile)}<strong class="period-name">${esc(names[profile]||'Jeu inconnu')}</strong><span aria-hidden="true">›</span></span>${roomRows(profile)}</button>`;}).join(''):'<p class="hint">Aucune plage : température Éco toute la journée.</p>'}
           <button type="button" class="fab" id="add" aria-label="Ajouter une plage horaire" title="Ajouter une plage horaire" ${disabled}>+</button>
           <details><summary>Copier cette journée</summary><div class="copies">${DAYS.filter(day=>day!==this.day).map(day=>`<label><input type="checkbox" value="${day}" ${disabled}>${LABELS[DAYS.indexOf(day)].slice(0,3)}</label>`).join('')}</div><button type="button" id="copy" ${disabled}>Remplacer les jours cochés</button><div class="actions"><button type="button" id="copy-weekdays" ${disabled}>Appliquer aussi du lundi au vendredi</button></div></details>
           <div class="actions"><button type="button" class="primary" id="save" ${disabled}>Enregistrer le planning${this.dirty?' *':''}</button><button type="button" id="reload" ${disabled}>${this.dirty?'Annuler les modifications':'Recharger'}</button></div>`:`<button type="button" id="reload" ${disabled}>Réessayer</button>`}
@@ -178,8 +178,8 @@
       if(q('#reload'))q('#reload').onclick=()=>this.load();
       if(q('#copy'))q('#copy').onclick=()=>{let count=0;this.shadowRoot.querySelectorAll('.copies input:checked').forEach(input=>{this.draft[input.value]=clone(this.draft[this.day]);count++;});if(count){this.dirty=true;this.message=`${count} jour(s) remplacé(s). Enregistrez le planning.`;this.render();}};
       if(q('#copy-weekdays'))q('#copy-weekdays').onclick=()=>{for(const day of DAYS.slice(0,5))this.draft[day]=clone(this.draft[this.day]);this.dirty=true;this.message='Journée copiée du lundi au vendredi. Enregistrez le planning pour appliquer.';this.render();};
-      if(q('#from'))q('#from').onchange=e=>{blocks[this.editIndex].from=e.value;this.dirty=true;};
-      if(q('#to'))q('#to').onchange=e=>{blocks[this.editIndex].to=e.value;this.dirty=true;};
+      if(q('#from'))q('#from').onchange=e=>{blocks[this.editIndex].from=e.target.value;this.dirty=true;};
+      if(q('#to'))q('#to').onchange=e=>{blocks[this.editIndex].to=e.target.value;this.dirty=true;};
       this.shadowRoot.querySelectorAll('[data-profile]').forEach(button=>button.onclick=()=>{blocks[this.editIndex].data={...blocks[this.editIndex].data,profil:button.dataset.profile};this.dirty=true;this.render();});
       if(q('#block-done'))q('#block-done').onclick=()=>{
         try{
