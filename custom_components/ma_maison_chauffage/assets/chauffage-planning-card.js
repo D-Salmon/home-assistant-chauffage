@@ -37,10 +37,39 @@
     return copy;
   }
   class ChauffagePlanningCard extends HTMLElement {
-    constructor(){super();this.attachShadow({mode:'open'});this.day='monday';this.index=0;this.screen='choose';this.setsReturn='choose';this.deleteConfirm='';this.editIndex=-1;this.dirty=false;this.setDirty=false;this.setId='';this.setDraft=null;this.busy=false;this.message='';}
-    setConfig(config){if(!Array.isArray(config.schedules)||!config.schedules.length)throw new Error('Renseigner schedules : name et entity.');this.config=config;this.index=Math.max(0,config.schedules.findIndex(s=>s.entity===config.active_schedule));this.screen='choose';this.setId='';this.setDraft={name:'',temperatures:Object.fromEntries((config.rooms||[]).map(room=>[room.id,room.temperatures?.eco??17]))};this.ready=false;this.render();if(this._hass)this.load();}
-    set hass(hass){this._hass=hass;if(this.config&&!this.ready&&!this.busy)this.load();}
+    constructor(){super();this.attachShadow({mode:'open'});this.day='monday';this.index=0;this.screen='choose';this.setsReturn='choose';this.deleteConfirm='';this.editIndex=-1;this.dirty=false;this.setDirty=false;this.setId='';this.setDraft=null;this.createName='';this.pendingCreated=null;this.busy=false;this.message='';}
+    setConfig(config){if(!Array.isArray(config.schedules))throw new Error('Renseigner schedules : liste des plannings.');this.config=config;this.index=Math.max(0,config.schedules.findIndex(s=>s.entity===config.active_schedule));this.screen='choose';this.setId='';this.setDraft={name:'',temperatures:Object.fromEntries((config.rooms||[]).map(room=>[room.id,room.temperatures?.eco??17]))};this.ready=false;this.render();if(this._hass&&config.schedules.length)this.load();}
+    set hass(hass){this._hass=hass;if(this.config?.schedules.length&&!this.ready&&!this.busy)this.load();}
     getCardSize(){return 8;}
+    async createSchedule(){
+      if(this.busy||this.dirty||this.setDirty)return;
+      const name=this.createName.trim();
+      if(!name||name.length>80){this.message='Donnez un nom au planning (80 caractères maximum).';this.render();return;}
+      if(this.config.schedules.some(item=>item.name.toLocaleLowerCase()===name.toLocaleLowerCase())){this.message='Ce planning figure déjà dans la carte.';this.render();return;}
+      let created,success=false;
+      try{
+        this.busy=true;this.message='Création du planning…';this.render();
+        created=this.pendingCreated?.name===name?this.pendingCreated:await this._hass.callWS({type:'schedule/create',name});
+        if(!created?.id)throw new Error('Home Assistant n’a pas confirmé la création du planning.');
+        this.pendingCreated={id:created.id,name};
+        let entity='';
+        for(let attempt=0;attempt<12;attempt++){
+          const registry=await this._hass.callWS({type:'config/entity_registry/list'});
+          entity=registry.find(item=>item.platform==='schedule'&&item.unique_id===created.id)?.entity_id||'';
+          if(entity){const states=await this._hass.callWS({type:'get_states'});if(states.some(item=>item.entity_id===entity))break;entity='';}
+          await new Promise(resolve=>setTimeout(resolve,250));
+        }
+        if(!entity)throw new Error('Planning créé dans Home Assistant, mais son entité n’est pas encore prête. Rechargez la carte, puis sélectionnez-le dans Réglages.');
+        const schedules=[...this.config.schedules,{entity,name}];
+        const active_schedule=this.config.active_schedule||entity;
+        await this._hass.callService('ma_maison_chauffage','command',{operation:'settings',revision:this.config.revision,payload:{schedules,active_schedule}});
+        this.config={...this.config,schedules,active_schedule,revision:this.config.revision+1};
+        this.index=schedules.length-1;this.day='monday';this.screen='choose';this.createName='';this.pendingCreated=null;this.message='Planning créé. Choisissez un jour pour ajouter ses plages horaires.';
+        this.dispatchEvent(new CustomEvent('chauffage-planning-created',{detail:{entity,name},bubbles:true,composed:true}));
+        success=true;
+      }catch(error){this.message=error.message||String(error);}
+      finally{this.busy=false;if(success){await this.load();if(this.draft){this.message='Planning créé. Choisissez un jour pour ajouter ses plages horaires.';this.render();}}else this.render();}
+    }
     selectSet(id){this.setId=id;const saved=this.config.temperature_sets?.[id];const builtIn=Object.hasOwn(PROFILES,id);const defaults=Object.fromEntries((this.config.rooms||[]).map(room=>[room.id,builtIn?room.temperatures?.[id]??room.temperatures?.eco??17:room.temperatures?.eco??17]));this.setDraft={name:builtIn?PROFILES[id]:saved?.name??'',temperatures:{...defaults,...saved?.temperatures}};this.setDirty=false;this.screen='set';this.render();}
     async saveSet(){
       if(this.busy||!this.setDraft)return;
@@ -71,7 +100,7 @@
       finally{this.busy=false;this.render();}
     }
     async load(){
-      if(this.busy)return;this.busy=true;this.message='Chargement…';this.render();
+      if(this.busy||!this.config.schedules.length)return;this.busy=true;this.message='Chargement…';this.render();
       try{
         const entity=this.config.schedules[this.index].entity;
         const [list,row]=await Promise.all([this._hass.callWS({type:'schedule/list'}),this._hass.callWS({type:'config/entity_registry/get',entity_id:entity})]);
@@ -127,11 +156,13 @@
       const badge=profile=>`<span class="profile-badge" style="--profile-color:${profileColor(profile)}" aria-hidden="true">${esc(profileSymbol(profile))}</span>`;
       const timeline=`<div class="day-scale" aria-hidden="true"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span></div><div class="day-track" aria-label="Plages de la journée">${blocks.map((block,i)=>{try{const start=minutes(block.from),end=minutes(block.to,true),profile=block.data?.profil??'confort';return `<button type="button" class="time-segment" data-open-block="${i}" aria-label="${esc(block.from.slice(0,5))} à ${esc(block.to.slice(0,5))} : ${esc(names[profile]||'Jeu inconnu')}" style="left:${start/14.4}%;width:${(end-start)/14.4}%;--profile-color:${profileColor(profile)}" ${disabled}></button>`;}catch{return '';}}).join('')}</div>`;
       const back='<button type="button" id="back" class="back">← Retour</button>';
-      const picker=`<label for="plan">Planning</label><select id="plan" ${disabled}>${this.config.schedules.map((item,i)=>`<option value="${i}" ${i===this.index?'selected':''}>${esc(item.name)}</option>`).join('')}</select>`;
+      const picker=this.config.schedules.length?`<label for="plan">Planning</label><select id="plan" ${disabled}>${this.config.schedules.map((item,i)=>`<option value="${i}" ${i===this.index?'selected':''}>${esc(item.name)}</option>`).join('')}</select>`:'';
       const dayPicker=`<div class="days" aria-label="Jour">${DAYS.map((day,i)=>`<button type="button" data-day="${day}" aria-pressed="${this.screen==='overview'&&this.day===day}" ${disabled}>${LABELS[i].slice(0,3)}</button>`).join('')}</div>`;
       let body='';
       if(this.screen==='choose'){
-        body=`<h2>Mes plannings</h2>${picker}<p class="hint">Choisissez un jour pour voir ses plages horaires.</p>${dayPicker}<button type="button" id="sets-open" class="sets-open" ${disabled}>Tous les jeux de températures ›</button>`;
+        body=`<h2>Mes plannings</h2>${this.config.schedules.length?`${picker}<p class="hint">Choisissez un jour pour voir ses plages horaires.</p>${dayPicker}`:'<p class="hint">Aucun planning pour le moment. Créez le premier ici.</p>'}<button type="button" id="new-plan" class="add" ${disabled}>+ Créer un planning</button><button type="button" id="sets-open" class="sets-open" ${disabled}>Tous les jeux de températures ›</button>`;
+      }else if(this.screen==='create'){
+        body=`${back}<h2>Nouveau planning</h2><label for="new-plan-name">Nom du planning</label><input id="new-plan-name" maxlength="80" value="${esc(this.createName)}" placeholder="Classique, Vacances…" ${disabled}><p class="hint">Le planning sera créé dans Home Assistant et ajouté automatiquement à cette carte. Vous pourrez ensuite définir ses plages pour chaque jour.</p><div class="actions"><button type="button" class="primary" id="create-plan" ${disabled}>Créer le planning</button><button type="button" id="cancel-plan" ${disabled}>Annuler</button></div>`;
       }else if(this.screen==='sets'){
         body=`${back}<h2>Tous les jeux de températures</h2><p class="hint">Chaque jeu fixe une température par pièce et peut servir dans plusieurs plannings.</p><h3>Jeux intégrés</h3>${Object.entries(PROFILES).map(([id,name])=>`<div class="set-entry"><div class="set-title">${badge(id)}<strong>${esc(name)}</strong></div>${roomRows(id)}<div class="set-actions"><button type="button" data-open-set="${esc(id)}" ${disabled}>Modifier les températures</button></div></div>`).join('')}<h3>Mes jeux</h3>${Object.entries(sets).map(([id,item])=>`<div class="set-entry"><div class="set-title">${badge(id)}<strong>${esc(item.name)}</strong></div>${roomRows(id)}<div class="set-actions"><button type="button" data-open-set="${esc(id)}" ${disabled}>Modifier les températures</button><button type="button" data-delete-set="${esc(id)}" ${disabled}>Supprimer</button></div>${this.deleteConfirm===id?`<div class="delete-confirm"><p>Supprimer « ${esc(item.name)} » ?</p><button type="button" data-confirm-delete="${esc(id)}" ${disabled}>Confirmer la suppression</button><button type="button" id="cancel-delete" ${disabled}>Annuler</button></div>`:''}</div>`).join('')||'<p class="hint">Aucun jeu personnalisé.</p>'}<button type="button" class="add" id="new-set" ${disabled}>+ Ajouter un jeu de températures</button><p class="hint">Les jeux intégrés ne peuvent pas être supprimés.</p>`;
       }else if(this.screen==='block'&&this.draft){
@@ -163,7 +194,11 @@
         .set-entry{padding:14px;margin:12px 0;border:1px solid var(--divider-color);border-radius:16px}.set-title{display:flex;align-items:center;gap:10px;margin-bottom:10px}.set-title strong{font-size:17px}.set-actions{display:flex;gap:8px;margin-top:12px}.delete-confirm{padding:12px;margin-top:12px;border-radius:12px;background:var(--secondary-background-color)}.delete-confirm p{margin:0 0 10px}.delete-confirm button{margin:0 8px 4px 0}.delete-confirm [data-confirm-delete]{color:#b3261e;border-color:#b3261e}
       </style><ha-card>${body}${this.message?`<div class="status" role="status" aria-live="polite">${esc(this.message)}</div>`:''}</ha-card>`;
       const q=selector=>this.shadowRoot.querySelector(selector);
-      if(q('#back'))q('#back').onclick=()=>{if(this.screen==='set'&&this.setDirty){this.message='Enregistrez le jeu ou annulez ses modifications.';this.render();return;}if(this.screen==='block'&&this.newBlock){this.draft[this.day].splice(this.editIndex,1);this.dirty=this.dirtyBeforeAdd;this.newBlock=false;}this.screen=this.screen==='overview'?'choose':this.screen==='set'?'sets':this.screen==='sets'?this.setsReturn:'overview';this.render();};
+      if(q('#back'))q('#back').onclick=()=>{if(this.screen==='set'&&this.setDirty){this.message='Enregistrez le jeu ou annulez ses modifications.';this.render();return;}if(this.screen==='block'&&this.newBlock){this.draft[this.day].splice(this.editIndex,1);this.dirty=this.dirtyBeforeAdd;this.newBlock=false;}this.screen=this.screen==='overview'?'choose':this.screen==='set'?'sets':this.screen==='sets'?this.setsReturn:this.screen==='create'?'choose':'overview';this.render();};
+      if(q('#new-plan'))q('#new-plan').onclick=()=>{if(this.dirty||this.setDirty){this.message='Enregistrez ou annulez vos modifications avant de créer un planning.';this.render();return;}this.createName='';this.message='';this.screen='create';this.render();};
+      if(q('#new-plan-name'))q('#new-plan-name').oninput=e=>{this.createName=e.target.value;};
+      if(q('#create-plan'))q('#create-plan').onclick=()=>this.createSchedule();
+      if(q('#cancel-plan'))q('#cancel-plan').onclick=()=>{this.createName='';this.message='';this.screen='choose';this.render();};
       if(q('#plan'))q('#plan').onchange=e=>{if(this.dirty||this.setDirty){e.target.value=this.index;this.message='Enregistrez ou annulez vos modifications avant de changer de planning.';this.render();return;}this.index=Number(e.target.value);this.screen='choose';this.load();};
       this.shadowRoot.querySelectorAll('[data-day]').forEach(button=>button.onclick=()=>{this.day=button.dataset.day;this.screen='overview';this.render();});
       this.shadowRoot.querySelectorAll('[data-open-block]').forEach(button=>button.onclick=()=>{this.editIndex=Number(button.dataset.openBlock);this.newBlock=false;this.screen='block';this.render();});
