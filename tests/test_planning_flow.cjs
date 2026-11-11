@@ -48,4 +48,19 @@ card.shadowRoot.querySelector('#copy-weekdays').onclick();
 assert.equal(card.draft.friday[0].data.profil, 'set_123');
 assert.equal(card.draft.saturday.length, 0);
 assert.equal(card.dirty, true);
+card.shadowRoot.querySelectorAll('[data-day]')[1].onclick();
+card.shadowRoot.querySelector('#add').onclick();
+assert.equal(card.screen, 'block');
+assert.ok(card.shadowRoot.innerHTML.includes('Ajouter une plage horaire'));
+assert.ok(!card.shadowRoot.innerHTML.includes('Nouveau jeu de températures'));
+const added = card.draft.tuesday[card.editIndex];
+added.from = '09:00';
+added.to = '10:00';
+card.shadowRoot.querySelector('#block-done').onclick();
+assert.equal(card.screen, 'overview');
+assert.equal(JSON.stringify(card.draft.tuesday.map(block => [block.from, block.to])), JSON.stringify([
+  ['00:00', '09:00'], ['09:00', '10:00'], ['10:00', '24:00'],
+]));
+assert.equal(card.draft.tuesday[0].data.profil, 'set_123');
+assert.equal(card.draft.tuesday[2].data.profil, 'set_123');
 console.log('planning day flow OK');
