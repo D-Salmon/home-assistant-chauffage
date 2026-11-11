@@ -53,7 +53,7 @@
         if(Object.values(temperatures).some(value=>!Number.isFinite(value)||value<5||value>25||value*2!==Math.round(value*2)))throw new Error('Choisissez des températures de 5 à 25 °C par pas de 0,5 °C.');
         this.busy=true;this.message='Enregistrement du jeu…';this.render();
         await this._hass.callService('ma_maison_chauffage','command',{operation:builtIn?'save_profile_temperatures':'save_temperature_set',revision:this.config.revision,payload:builtIn?{profile:this.setId,temperatures}:{id:this.setId||null,name,temperatures}});
-        this.setDirty=false;this.dispatchEvent(new CustomEvent('chauffage-temperature-set-saved',{bubbles:true,composed:true}));
+        this.setDirty=false;this.screen='sets';this.message='Jeu de températures enregistré.';this.dispatchEvent(new CustomEvent('chauffage-temperature-set-saved',{bubbles:true,composed:true}));
       }catch(error){this.message=error.message||String(error);}
       finally{this.busy=false;this.render();}
     }
@@ -65,7 +65,7 @@
         if(!Array.isArray(list))throw new Error('Impossible de vérifier les plannings. Réessayez plus tard.');
         if(list.some(schedule=>DAYS.some(day=>(schedule[day]||[]).some(block=>block.data?.profil===id))))throw new Error('Ce jeu est utilisé dans un planning. Remplacez-le dans les plages avant de le supprimer.');
         await this._hass.callService('ma_maison_chauffage','command',{operation:'remove_temperature_set',revision:this.config.revision,payload:{id}});
-        this.deleteConfirm='';
+        this.deleteConfirm='';this.message='Jeu de températures supprimé.';
         this.dispatchEvent(new CustomEvent('chauffage-temperature-set-removed',{bubbles:true,composed:true}));
       }catch(error){this.message=error.message||String(error);}
       finally{this.busy=false;this.render();}
@@ -222,3 +222,4 @@
   }
   if(!customElements.get('chauffage-planning-card'))customElements.define('chauffage-planning-card',ChauffagePlanningCard);
 })();
+

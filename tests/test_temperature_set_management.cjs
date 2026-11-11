@@ -61,6 +61,7 @@ card._hass = {
   assert.equal(calls[1][2].payload.profile, 'confort');
   assert.equal(calls[1][2].payload.temperatures.chambre, 22);
   assert.equal(card.events[1].type, 'chauffage-temperature-set-saved');
+  assert.equal(card.screen, 'sets');
   card.screen = 'sets';
   card.render();
   card.shadowRoot.querySelector('#new-set').onclick();
@@ -70,5 +71,7 @@ card._hass = {
   await card.saveSet();
   assert.equal(calls[2][2].operation, 'save_temperature_set');
   assert.equal(calls[2][2].payload.name, 'Soirée');
+  assert.equal(card.screen, 'sets');
   console.log('temperature set management OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });
+

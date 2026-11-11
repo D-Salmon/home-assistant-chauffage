@@ -221,12 +221,13 @@
       if(roomForm){const current=rooms.find(r=>r.id===this.selected);if(q('#mode'))q('#mode').value=current?.mode||'planning';if(q('#room-entity'))q('#room-entity').value=current?.entity||'';if(q('#last-seen'))q('#last-seen').value=current?.last_seen||'';if(q('#pause-entity'))q('#pause-entity').value=current?.pause_entity||'';}
       if(settings){q('#relay').value=s.relay;q('#anticipation-window').value=String(s.anticipation_window_days);q('#outdoor-sensor').value=s.outdoor_sensor||'';all('#schedules option').forEach(o=>o.selected=s.schedules.some(p=>p.entity===o.value));}
       if(q('#active-plan'))q('#active-plan').value=s.active_schedule;
-      if(q('#planner')){if(customElements.get('chauffage-planning-card')){const card=document.createElement('chauffage-planning-card');card.addEventListener('chauffage-planning-saved',()=>{this.navigate('home');this.note('Planning enregistré.');});card.addEventListener('chauffage-temperature-set-saved',async()=>{await this.refresh();this.navigate('home');this.note('Jeu de températures enregistré.');});card.addEventListener('chauffage-temperature-set-removed',async()=>{await this.refresh();this.navigate('home');this.note('Jeu de températures supprimé.');});card.setConfig({schedules:s.schedules,active_schedule:s.active_schedule,rooms,temperature_sets:s.temperature_sets||{},revision:m.revision});card.hass=this._hass;q('#planner').append(card);}else q('#planner').textContent='Chargez aussi la ressource chauffage-planning-card.js.';}
+      if(q('#planner')){if(customElements.get('chauffage-planning-card')){const card=document.createElement('chauffage-planning-card');card.addEventListener('chauffage-planning-saved',()=>{this.navigate('home');this.note('Planning enregistré.');});const refreshSets=async()=>{try{await this.refresh();card.config={...card.config,rooms:this.model.rooms,temperature_sets:this.model.settings.temperature_sets||{},revision:this.model.revision};card.render();}catch(error){card.message=error.message||String(error);card.render();}};card.addEventListener('chauffage-temperature-set-saved',refreshSets);card.addEventListener('chauffage-temperature-set-removed',refreshSets);card.setConfig({schedules:s.schedules,active_schedule:s.active_schedule,rooms,temperature_sets:s.temperature_sets||{},revision:m.revision});card.hass=this._hass;q('#planner').append(card);}else q('#planner').textContent='Chargez aussi la ressource chauffage-planning-card.js.';}
     }
   }
   if(!customElements.get('ma-maison-chauffage-card'))customElements.define('ma-maison-chauffage-card',MaMaisonCard);
   window.customCards=window.customCards||[];
   window.customCards.push({type:'ma-maison-chauffage-card',name:'Ma maison - Chauffage',description:'Pièces et profils dynamiques, chaudière et plannings sans YAML au quotidien.',preview:false});
 })();
+
 
 
