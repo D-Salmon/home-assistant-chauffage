@@ -43,6 +43,8 @@ card.shadowRoot.querySelectorAll('[data-day]')[0].onclick();
 assert.equal(card.screen, 'overview');
 assert.ok(card.shadowRoot.innerHTML.includes("Pas d&#39;enfants"));
 assert.ok(card.shadowRoot.innerHTML.includes('Chambre Valentine'));
+assert.ok(card.shadowRoot.innerHTML.includes('class="day-track"'));
+assert.ok(card.shadowRoot.innerHTML.includes('class="time-segment"'));
 assert.ok(card.shadowRoot.innerHTML.includes('aria-label="Ajouter une plage horaire"'));
 card.shadowRoot.querySelector('#copy-weekdays').onclick();
 assert.equal(card.draft.friday[0].data.profil, 'set_123');
@@ -63,4 +65,7 @@ assert.equal(JSON.stringify(card.draft.tuesday.map(block => [block.from, block.t
 ]));
 assert.equal(card.draft.tuesday[0].data.profil, 'set_123');
 assert.equal(card.draft.tuesday[2].data.profil, 'set_123');
+card.selectSet('set_123');
+assert.ok(card.shadowRoot.innerHTML.includes('type="range"'));
+assert.ok(card.shadowRoot.innerHTML.includes('data-range-room="valentine"'));
 console.log('planning day flow OK');
