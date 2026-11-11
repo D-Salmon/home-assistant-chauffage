@@ -197,6 +197,23 @@ class HeatingRuntime:
             new_learning = deepcopy(self.learning)
             try:
                 new = change(self.data, operation, call.data.get("payload", {}), time.time())
+                if operation == "remove_temperature_set":
+                    set_id = call.data["payload"]["id"]
+                    for schedule in self.data["settings"]["schedules"]:
+                        entity = schedule["entity"]
+                        try:
+                            response = await self.service("schedule", "get_schedule", {"entity_id": entity}, return_response=True)
+                            days = response[entity]
+                            if not isinstance(days, dict):
+                                raise ValueError("Réponse invalide")
+                            for day in ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"):
+                                blocks = days.get(day, [])
+                                if not isinstance(blocks, list):
+                                    raise ValueError("Réponse invalide")
+                                if any((block.get("data") or {}).get("profil") == set_id for block in blocks):
+                                    raise ValueError("Ce jeu est utilisé dans un planning. Remplacez-le dans les plages avant de le supprimer.")
+                        except (KeyError, TypeError, AttributeError) as exc:
+                            raise ValueError("Impossible de vérifier les plannings. Réessayez plus tard.") from exc
                 if operation in ("save_room", "remove_room"):
                     old_rooms = {r["id"]: r for r in self.data["rooms"]}
                     new_rooms = {r["id"]: r for r in new["rooms"]}
