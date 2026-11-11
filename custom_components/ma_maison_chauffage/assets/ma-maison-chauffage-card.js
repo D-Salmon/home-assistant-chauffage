@@ -94,7 +94,6 @@
       if(selected&&!ids.includes(selected))ids.unshift(selected);
       return '<option value="">Choisir…</option>'+ids.sort().map(id=>`<option value="${esc(id)}" ${id===selected?'selected':''}>${esc(this._hass.states[id]?.attributes?.friendly_name||id)} · ${esc(id)}</option>`).join('');
     }
-    profileInputs(room){return Object.entries(PROFILES).map(([key,name])=>`<div><label for="${key}">${name} (°C)</label><input type="number" id="${key}" name="${key}" min="5" max="25" step="0.5" required value="${room.temperatures[key]}"></div>`).join('');}
     roomForm(room,editing){
       this.formRevision=this.model.revision;
       if(!editing){
@@ -127,7 +126,7 @@
       }
       return `<form id="room-form"><h2>${editing?(room.id?'Modifier la pièce':'Ajouter une pièce'):esc(room.name)}</h2>
         ${editing?`<label for="room-name">Nom de la pièce</label><input id="room-name" name="name" required maxlength="80" value="${esc(room.name)}"><label for="room-entity">Vanne thermostatique</label><select id="room-entity" name="entity" required>${this.options('climate',room.entity,this.model.rooms.filter(r=>r.id!==room.id).map(r=>r.entity))}</select><label for="pause-entity">Déclencheur de pause (facultatif)</label><select id="pause-entity" name="pause_entity"><option value="">Aucun</option>${Object.keys(this._hass.states).filter(id=>/^(binary_sensor|input_boolean|switch)\./.test(id)).sort().map(id=>`<option value="${esc(id)}">${esc(this._hass.states[id]?.attributes?.friendly_name||id)} · ${esc(id)}</option>`).join('')}</select><details class="help"><summary aria-label="Afficher l’explication">?</summary><p class="hint">Choisissez ici le détecteur d’ouverture de la fenêtre. Quand son état passe à on (fenêtre ouverte), la pièce est en pause ; quand il revient à off (fenêtre fermée), le chauffage reprend.</p></details>` : ''}
-        <div class="profiles">${this.profileInputs(room)}</div>
+        <p class="hint">Les températures de cette pièce se règlent dans Plannings → Tous les jeux de températures. Une nouvelle pièce utilise d’abord les valeurs par défaut des jeux intégrés.</p>
         ${editing?`<label for="last-seen">Capteur de dernière communication de la vanne (facultatif)</label><select id="last-seen" name="last_seen">${this.options('sensor',room.last_seen||'')}</select><details class="help"><summary aria-label="Afficher l’explication">?</summary><p class="hint">À renseigner seulement si une entité capteur fournit la date et l’heure du dernier message de la vanne. Sans ce capteur, laissez le champ vide ; ce réglage est indépendant du déclencheur de pause d’une pièce.</p></details>`:''}
         <div class="actions"><button class="primary" type="submit">Enregistrer</button><button type="button" id="cancel">Annuler</button></div></form>`;
     }
@@ -189,7 +188,7 @@
       if(q('#cancel'))q('#cancel').onclick=()=>{this.dirty=false;this.navigate('home');};
       if(q('#resume'))q('#resume').onclick=()=>this.command('resume',{id:this.selected,mode:'planning'},this.formRevision,'home');
       if(q('#retry'))q('#retry').onclick=()=>this.command('retry',{});
-      const roomForm=q('#room-form');if(roomForm){roomForm.oninput=()=>this.dirty=true;roomForm.onsubmit=e=>{e.preventDefault();const values=new FormData(roomForm),room=m.rooms.find(r=>r.id===this.selected),payload={name:room?.name,entity:room?.entity,mode:values.get('mode')||room?.mode||'planning',temperatures:Object.fromEntries(Object.keys(PROFILES).map(p=>[p,Number(values.get(p))]))};if(room)payload.id=room.id;if(this.view==='edit'){payload.name=values.get('name');payload.entity=values.get('entity');payload.last_seen=values.get('last_seen');payload.pause_entity=values.get('pause_entity')||'';}this.command('save_room',payload,this.formRevision,'home');};}
+      const roomForm=q('#room-form');if(roomForm){roomForm.oninput=()=>this.dirty=true;roomForm.onsubmit=e=>{e.preventDefault();const values=new FormData(roomForm),room=m.rooms.find(r=>r.id===this.selected),payload={name:room?.name,entity:room?.entity,mode:room?.mode||'planning',temperatures:room?.temperatures||{confort:20,eco:17,nuit:17,absent:14}};if(room)payload.id=room.id;if(this.view==='edit'){payload.name=values.get('name');payload.entity=values.get('entity');payload.last_seen=values.get('last_seen');payload.pause_entity=values.get('pause_entity')||'';}this.command('save_room',payload,this.formRevision,'home');};}
       const override=q('#override-form');if(override)override.onsubmit=e=>{e.preventDefault();if(this.dirty){this.note('Enregistrez d’abord les réglages de la pièce.');return;}const v=new FormData(override);this.command('override',{id:this.selected,temperature:Number(v.get('temperature')),hours:Number(v.get('hours'))},this.formRevision,'home');};
       const dial=q('#temperature-dial'),dialInput=q('#override-temp'),minus=q('#override-minus'),plus=q('#override-plus');
       if(dial&&dialInput&&dial.getAttribute('aria-disabled')==='false'){

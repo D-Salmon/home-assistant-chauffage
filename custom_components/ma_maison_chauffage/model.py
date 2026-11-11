@@ -98,6 +98,8 @@ def change(data, operation, payload, now):
             rooms[rooms.index(old)] = room
         else:
             rooms.append(room)
+            for item in settings.get("temperature_sets", {}).values():
+                item["temperatures"][room["id"]] = room["temperatures"]["eco"]
     elif operation in ("remove_room", "override", "resume"):
         room = next((r for r in rooms if r["id"] == payload.get("id")), None)
         if room is None:
@@ -117,6 +119,15 @@ def change(data, operation, payload, now):
                 raise ValueError("Activez le chauffage et quittez l’absence maison.")
             room["override"] = {"temperature": temperature(payload.get("temperature")),
                                 "until": now + number(payload.get("hours"), .5, 12) * 3600}
+    elif operation == "save_profile_temperatures":
+        if set(payload) != {"profile", "temperatures"} or payload["profile"] not in PROFILES:
+            raise ValueError("Jeu de températures intégré invalide.")
+        values = payload["temperatures"]
+        if not isinstance(values, dict) or set(values) != {room["id"] for room in rooms}:
+            raise ValueError("Renseignez la température de chaque pièce.")
+        profile = payload["profile"]
+        for room in rooms:
+            room["temperatures"][profile] = temperature(values[room["id"]])
     elif operation == "save_temperature_set":
         if set(payload) != {"id", "name", "temperatures"}:
             raise ValueError("Jeu de températures invalide.")

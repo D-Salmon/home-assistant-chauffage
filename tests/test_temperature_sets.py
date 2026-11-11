@@ -31,7 +31,17 @@ class TemperatureSetTests(unittest.TestCase):
         set_id = next(iter(self.data["settings"]["temperature_sets"]))
         self.data = model.change(self.data, "save_room", {"name": "Salon", "entity": "climate.salon"}, 0)
         salon = self.data["rooms"][1]
+        self.assertEqual(self.data["settings"]["temperature_sets"][set_id]["temperatures"][salon["id"]], 17.0)
         self.assertEqual(model.target(salon, self.data["settings"], {"state": "on", "attributes": {"profil": set_id}}, 0), (17.0, "Enfants absents"))
+
+    def test_integrated_set_updates_every_room_atomically(self):
+        self.data = model.change(self.data, "save_room", {"name": "Salon", "entity": "climate.salon"}, 0)
+        values = {self.data["rooms"][0]["id"]: 22, self.data["rooms"][1]["id"]: 19}
+        changed = model.change(self.data, "save_profile_temperatures", {"profile": "confort", "temperatures": values}, 0)
+        self.assertEqual([room["temperatures"]["confort"] for room in changed["rooms"]], [22.0, 19.0])
+        self.assertEqual(self.data["rooms"][0]["temperatures"]["confort"], 20.0)
+        with self.assertRaisesRegex(ValueError, "chaque pièce"):
+            model.change(self.data, "save_profile_temperatures", {"profile": "confort", "temperatures": {self.room["id"]: 22}}, 0)
 
     def test_set_requires_every_existing_room(self):
         with self.assertRaisesRegex(ValueError, "chaque pièce"):

@@ -49,5 +49,15 @@ card._hass = {
   assert.equal(calls[0][2].operation, 'remove_temperature_set');
   assert.equal(calls[0][2].payload.id, 'set_123');
   assert.equal(card.events[0].type, 'chauffage-temperature-set-removed');
+  card.selectSet('confort');
+  assert.equal(card.setDraft.temperatures.chambre, 21);
+  assert.ok(card.shadowRoot.innerHTML.includes('data-range-room="chambre"'));
+  assert.ok(!card.shadowRoot.innerHTML.includes('id="set-name"'));
+  card.setDraft.temperatures.chambre = 22;
+  await card.saveSet();
+  assert.equal(calls[1][2].operation, 'save_profile_temperatures');
+  assert.equal(calls[1][2].payload.profile, 'confort');
+  assert.equal(calls[1][2].payload.temperatures.chambre, 22);
+  assert.equal(card.events[1].type, 'chauffage-temperature-set-saved');
   console.log('temperature set management OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });
