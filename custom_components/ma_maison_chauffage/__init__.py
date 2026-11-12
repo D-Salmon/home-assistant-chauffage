@@ -1,9 +1,10 @@
 """Persistent dynamic room registry and local heating coordinator."""
 import asyncio
 from copy import deepcopy
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import time
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, EVENT_HOMEASSISTANT_STOP, EVENT_STATE_CHANGED
 from homeassistant.core import callback
@@ -15,6 +16,7 @@ from homeassistant.util import dt as dt_util
 
 from .model import change, decide, initial_data, supported_temperature, target, valve_override_temperature
 from .learning import add_sample, estimate_minutes, upcoming_block
+from .usage import advance
 
 DOMAIN = "ma_maison_chauffage"
 SIGNAL = DOMAIN + "_updated"
@@ -71,6 +73,10 @@ class HeatingRuntime:
         self.data = initial_data()
         self.memory = {}
         self.learning = {}
+        self.usage = {"days": {}, "reset_at": None}
+        self.usage_last_at = None
+        self.usage_last_state = None
+        self.usage_persist_at = 0
         self.schedule_data = None
         self.schedule_data_at = 0
         self.status = {"rooms": [], "faults": [], "relay": "unknown", "revision": 0}
@@ -91,6 +97,7 @@ class HeatingRuntime:
             self.data = saved["configuration"]
             self.memory = saved.get("memory", {})
             self.learning = saved.get("learning", {})
+            self.usage = saved.get("usage", {"days": {}, "reset_at": None})
         had_house_name = "house_name" in self.data["settings"]
         for key, value in initial_data()["settings"].items():
             self.data["settings"].setdefault(key, value)
@@ -98,7 +105,38 @@ class HeatingRuntime:
             self.data["settings"]["house_name"] = self.house_name
 
     async def persist(self):
-        await self.store.async_save({"configuration": deepcopy(self.data), "memory": deepcopy(self.memory), "learning": deepcopy(self.learning)})
+        await self.store.async_save({"configuration": deepcopy(self.data), "memory": deepcopy(self.memory), "learning": deepcopy(self.learning), "usage": deepcopy(self.usage)})
+
+    def update_usage(self, now, actual):
+        """Credit relay-on time without counting periods when HA was stopped."""
+        if not hasattr(self, "usage"):
+            self.usage = {"days": {}, "reset_at": None}
+        previous = getattr(self, "usage_last_state", None)
+        last_at = getattr(self, "usage_last_at", None)
+        relay = self.data["settings"]["relay"]
+        states = getattr(self.hass, "states", None)
+        state = states.get(relay) if relay and states else None
+        changed_at = state.last_changed.timestamp() if state and getattr(state, "last_changed", None) else None
+        try:
+            local_timezone = ZoneInfo(getattr(getattr(self.hass, "config", None), "time_zone", "UTC"))
+        except ZoneInfoNotFoundError:
+            local_timezone = timezone.utc
+        elapsed = advance(self.usage["days"], last_at, previous, now, actual, changed_at, local_timezone)
+        cutoff = f"{datetime.fromtimestamp(now, local_timezone).year - 1}-01-01"
+        for day in tuple(self.usage["days"]):
+            if day < cutoff:
+                del self.usage["days"][day]
+        self.usage_last_at = now
+        self.usage_last_state = actual
+        return elapsed, previous is not None and previous != actual
+
+    def usage_summary(self):
+        """Expose compact monthly totals instead of the complete daily store."""
+        months = {}
+        for day, seconds in self.usage["days"].items():
+            month = day[:7]
+            months[month] = months.get(month, 0.0) + seconds
+        return {"months": months, "reset_at": self.usage["reset_at"]}
 
     @callback
     def subscribe(self):
@@ -143,7 +181,7 @@ class HeatingRuntime:
             if numeric is None:
                 return
             new = change(self.data, "override", {"id": room_id, "temperature": numeric, "hours": 3}, now)
-            await self.store.async_save({"configuration": deepcopy(new), "memory": deepcopy(self.memory), "learning": deepcopy(self.learning)})
+            await self.store.async_save({"configuration": deepcopy(new), "memory": deepcopy(self.memory), "learning": deepcopy(self.learning), "usage": deepcopy(getattr(self, "usage", {"days": {}, "reset_at": None}))})
             self.data = new
             task = self.tasks.pop(room_id, None)
             if task:
@@ -159,6 +197,8 @@ class HeatingRuntime:
     async def stop(self):
         async with self.lock:
             relay = self.data["settings"]["relay"]
+            state = self.hass.states.get(relay) if relay else None
+            self.update_usage(time.time(), state.state if state else "unknown")
             if relay:
                 try:
                     await self.service("switch", "turn_off", {"entity_id": relay})
@@ -194,6 +234,18 @@ class HeatingRuntime:
             if call.data.get("revision") != self.data["revision"]:
                 raise ServiceValidationError("Les réglages ont changé ailleurs. Rechargez la carte.")
             operation = call.data.get("operation")
+            if operation == "reset_heating_usage":
+                now = time.time()
+                relay = self.data["settings"]["relay"]
+                state = self.hass.states.get(relay) if relay else None
+                self.usage = {"days": {}, "reset_at": now}
+                self.usage_last_at = now
+                self.usage_last_state = state.state if state else "unknown"
+                self.usage_persist_at = now
+                await self.persist()
+                self.status["usage"] = self.usage_summary()
+                self.publish()
+                return
             new_learning = deepcopy(self.learning)
             try:
                 new = change(self.data, operation, call.data.get("payload", {}), time.time())
@@ -241,7 +293,7 @@ class HeatingRuntime:
             except (ValueError, TypeError, KeyError) as exc:
                 raise ServiceValidationError(str(exc)) from exc
             # Durable save precedes replacing the live model and sending orders.
-            await self.store.async_save({"configuration": deepcopy(new), "memory": deepcopy(self.memory), "learning": deepcopy(new_learning)})
+            await self.store.async_save({"configuration": deepcopy(new), "memory": deepcopy(self.memory), "learning": deepcopy(new_learning), "usage": deepcopy(getattr(self, "usage", {"days": {}, "reset_at": None}))})
             if operation in ("override", "resume"):
                 room_id = call.data.get("payload", {}).get("id")
                 previous_room = next((room for room in self.data["rooms"] if room["id"] == room_id), None)
@@ -486,12 +538,14 @@ class HeatingRuntime:
                              "anticipating": anticipating or stopping_early, "paused": paused})
             relay = self.snapshot(s["relay"])
             actual = relay["state"] if relay else "unknown"
+            usage_elapsed, usage_transition = self.update_usage(now, actual)
             memory, send = decide(s, len(rows), heating, faults, actual, self.memory, now, self.reset)
             self.reset = False
             changed = memory != self.memory
             self.memory = memory
-            if changed or learning_changed:
+            if changed or learning_changed or usage_transition or (usage_elapsed and now - getattr(self, "usage_persist_at", 0) >= 60):
                 await self.persist()
+                self.usage_persist_at = now
             if send and s["relay"]:
                 try:
                     await self.service("switch", "turn_" + memory["desired"], {"entity_id": s["relay"]})
@@ -499,7 +553,7 @@ class HeatingRuntime:
                     faults.append("Commande relais impossible : " + str(exc))
             if actual != memory["desired"] and memory["attempts"] >= 3 and now - memory["last_attempt"] >= 15:
                 faults.append("Relais non confirmé après trois tentatives. Vérifier puis cliquer Réessayer.")
-            self.status = {"rooms": rows, "faults": faults, "relay": actual, "requested": memory["desired"], "heating_count": len(heating), "revision": self.data["revision"]}
+            self.status = {"rooms": rows, "faults": faults, "relay": actual, "requested": memory["desired"], "heating_count": len(heating), "revision": self.data["revision"], "usage": self.usage_summary()}
             notice = "\n".join(faults)
             if notice != self.last_notice:
                 self.last_notice = notice
