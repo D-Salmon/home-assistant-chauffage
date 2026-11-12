@@ -84,6 +84,10 @@ class ValveOverrideRuntimeTests(unittest.TestCase):
         self.created.append(coroutine)
         return coroutine
 
+    def test_heating_usage_summary_is_monthly(self):
+        self.runtime.usage = {"days": {"2026-10-31": 60, "2026-11-01": 120, "2026-11-02": 30}, "reset_at": None}
+        self.assertEqual(self.runtime.usage_summary(), {"months": {"2026-10": 60, "2026-11": 150}, "reset_at": None})
+
     def test_new_valve_setpoint_resets_temporary_duration_and_refreshes_card(self):
         old = SimpleNamespace(state="heat", attributes={"temperature": 20})
         new = SimpleNamespace(state="heat", attributes={"temperature": 22})
