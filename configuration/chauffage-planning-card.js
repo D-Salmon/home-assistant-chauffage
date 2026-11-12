@@ -60,26 +60,30 @@
           await new Promise(resolve=>setTimeout(resolve,250));
         }
         if(!entity)throw new Error('Planning créé dans Home Assistant, mais son entité n’est pas encore prête. Rechargez la carte, puis sélectionnez-le dans Réglages.');
-        const schedules=[...this.config.schedules,{entity,name}];
-        const active_schedule=this.config.active_schedule||entity;
+        const available=new Set((await this._hass.callWS({type:'get_states'})).map(state=>state.entity_id));
+        const retained=this.config.schedules.filter(item=>available.has(item.entity));
+        const removedCount=this.config.schedules.length-retained.length;
+        const schedules=[...retained,{entity,name}];
+        const active_schedule=available.has(this.config.active_schedule)?this.config.active_schedule:entity;
         await this._hass.callService('ma_maison_chauffage','command',{operation:'settings',revision:this.config.revision,payload:{schedules,active_schedule}});
         this.config={...this.config,schedules,active_schedule,revision:this.config.revision+1};
-        this.index=schedules.length-1;this.day='monday';this.screen='choose';this.createName='';this.pendingCreated=null;this.message='Planning créé. Choisissez un jour pour ajouter ses plages horaires.';
+        this.index=schedules.length-1;this.day='monday';this.screen='choose';this.createName='';this.pendingCreated=null;this.message=removedCount?'Planning créé. Un planning introuvable dans Home Assistant a été retiré de la carte.':'Planning créé. Choisissez un jour pour ajouter ses plages horaires.';
         this.dispatchEvent(new CustomEvent('chauffage-planning-created',{detail:{entity,name},bubbles:true,composed:true}));
         success=true;
       }catch(error){this.message=error.message||String(error);}
-      finally{this.busy=false;if(success){await this.load();if(this.draft){this.message='Planning créé. Choisissez un jour pour ajouter ses plages horaires.';this.render();}}else this.render();}
+      finally{this.busy=false;if(success){const resultMessage=this.message;await this.load();this.message=resultMessage;this.render();}else this.render();}
     }
     async deleteSchedule(){
       if(this.busy||this.dirty||this.setDirty||!this.planDeleteConfirm||!this.config.schedules.length)return;
       const selected=this.config.schedules[this.index];
-      let removedFromCard=false,deletedFromHA=false;
+      let removedFromCard=false;
       try{
         this.busy=true;this.message='Vérification du planning…';this.render();
-        const [list,row]=await Promise.all([this._hass.callWS({type:'schedule/list'}),this._hass.callWS({type:'config/entity_registry/get',entity_id:selected.entity})]);
+        const [list,registry]=await Promise.all([this._hass.callWS({type:'schedule/list'}),this._hass.callWS({type:'config/entity_registry/list'})]);
+        const row=registry.find(item=>item.entity_id===selected.entity);
         const current=row?.platform==='schedule'&&list.find(item=>item.id===row.unique_id);
-        if(!current)throw new Error('Ce planning ne peut pas être supprimé depuis la carte. Vérifiez qu’il s’agit d’un assistant Planning créé dans HA.');
-        if(!this.original||stable(current)!==stable(this.original))throw new Error('Ce planning a changé ailleurs. Rechargez-le avant de le supprimer.');
+        if(current&&(!this.original||stable(current)!==stable(this.original)))throw new Error('Ce planning a changé ailleurs. Rechargez-le avant de le supprimer.');
+        if(row&&!current)throw new Error('Le planning existe encore dans Home Assistant, mais il ne peut pas être chargé. Vérifiez-le dans HA avant de le supprimer.');
         const schedules=this.config.schedules.filter(item=>item.entity!==selected.entity);
         const active_schedule=this.config.active_schedule===selected.entity?schedules[0]?.entity||'':this.config.active_schedule;
         await this._hass.callService('ma_maison_chauffage','command',{operation:'settings',revision:this.config.revision,payload:{schedules,active_schedule}});
@@ -87,9 +91,8 @@
         this.config={...this.config,schedules,active_schedule,revision:this.config.revision+1};
         this.index=Math.min(this.index,Math.max(0,schedules.length-1));this.screen='choose';this.planDeleteConfirm=false;this.draft=null;this.original=null;
         this.dispatchEvent(new CustomEvent('chauffage-planning-removed',{detail:{entity:selected.entity},bubbles:true,composed:true}));
-        await this._hass.callWS({type:'schedule/delete',schedule_id:current.id});
-        deletedFromHA=true;
-        this.message='Planning supprimé de la carte et de Home Assistant.';
+        if(current)await this._hass.callWS({type:'schedule/delete',schedule_id:current.id});
+        this.message=current?'Planning supprimé de la carte et de Home Assistant.':'Planning introuvable dans Home Assistant retiré de la carte.';
       }catch(error){this.message=removedFromCard?`Planning retiré de la carte, mais suppression dans Home Assistant non confirmée : ${error.message||String(error)}. Supprimez cet assistant dans HA.`:error.message||String(error);}
       finally{this.busy=false;if(removedFromCard&&this.config.schedules.length){const resultMessage=this.message;await this.load();this.message=resultMessage;this.render();}else this.render();}
     }
@@ -126,12 +129,13 @@
       if(this.busy||!this.config.schedules.length)return;this.busy=true;this.message='Chargement…';this.render();
       try{
         const entity=this.config.schedules[this.index].entity;
-        const [list,row]=await Promise.all([this._hass.callWS({type:'schedule/list'}),this._hass.callWS({type:'config/entity_registry/get',entity_id:entity})]);
+        const [list,registry]=await Promise.all([this._hass.callWS({type:'schedule/list'}),this._hass.callWS({type:'config/entity_registry/list'})]);
+        const row=registry.find(item=>item.entity_id===entity);
         const item=row?.platform==='schedule'&&list.find(s=>s.id===row.unique_id);
         if(!item)throw new Error('Créez d’abord l’assistant Planning '+entity+' dans HA. Les plannings YAML ne sont pas modifiables ici.');
         this.original=clone(item);this.draft=clone(item);for(const d of DAYS)this.draft[d]??=[];
         this.dirty=false;this.message='';
-      }catch(e){this.draft=null;this.message=e.message||String(e);}
+      }catch(e){this.draft=null;this.original=null;this.message=e.message||String(e);}
       finally{this.ready=true;this.busy=false;this.render();}
     }
     async save(){
@@ -183,7 +187,7 @@
       const dayPicker=`<div class="days" aria-label="Jour">${DAYS.map((day,i)=>`<button type="button" data-day="${day}" aria-pressed="${this.screen==='overview'&&this.day===day}" ${disabled}>${LABELS[i].slice(0,3)}</button>`).join('')}</div>`;
       let body='';
       if(this.screen==='choose'){
-        body=`<h2>Mes plannings</h2>${this.config.schedules.length?`${picker}<p class="hint">Choisissez un jour pour voir ses plages horaires.</p>${dayPicker}`:'<p class="hint">Aucun planning pour le moment. Créez le premier ici.</p>'}<button type="button" id="new-plan" class="add" ${disabled}>+ Créer un planning</button>${this.config.schedules.length&&this.draft?`<button type="button" id="delete-plan" class="danger" ${disabled}>Supprimer ce planning</button>`:''}${this.planDeleteConfirm?`<div class="delete-confirm"><p>Supprimer « ${esc(this.config.schedules[this.index].name)} » de la carte et de Home Assistant ? Toutes ses plages horaires seront perdues.</p><button type="button" id="confirm-plan-delete" class="danger" ${disabled}>Confirmer la suppression</button><button type="button" id="cancel-plan-delete" ${disabled}>Annuler</button></div>`:''}<button type="button" id="sets-open" class="sets-open" ${disabled}>Tous les jeux de températures ›</button>`;
+        body=`<h2>Mes plannings</h2>${this.config.schedules.length?`${picker}<p class="hint">Choisissez un jour pour voir ses plages horaires.</p>${dayPicker}`:'<p class="hint">Aucun planning pour le moment. Créez le premier ici.</p>'}<button type="button" id="new-plan" class="add" ${disabled}>+ Créer un planning</button>${this.config.schedules.length?`<button type="button" id="delete-plan" class="danger" ${disabled}>${this.draft?'Supprimer ce planning':'Retirer ce planning introuvable'}</button>`:''}${this.planDeleteConfirm?`<div class="delete-confirm"><p>${this.draft?`Supprimer « ${esc(this.config.schedules[this.index].name)} » de la carte et de Home Assistant ? Toutes ses plages horaires seront perdues.`:`Retirer « ${esc(this.config.schedules[this.index].name)} » de la carte ? Son entité est introuvable dans Home Assistant.`}</p><button type="button" id="confirm-plan-delete" class="danger" ${disabled}>Confirmer la suppression</button><button type="button" id="cancel-plan-delete" ${disabled}>Annuler</button></div>`:''}<button type="button" id="sets-open" class="sets-open" ${disabled}>Tous les jeux de températures ›</button>`;
       }else if(this.screen==='create'){
         body=`${back}<h2>Nouveau planning</h2><label for="new-plan-name">Nom du planning</label><input id="new-plan-name" maxlength="80" value="${esc(this.createName)}" placeholder="Classique, Vacances…" ${disabled}><p class="hint">Le planning sera créé dans Home Assistant et ajouté automatiquement à cette carte. Vous pourrez ensuite définir ses plages pour chaque jour.</p><div class="actions"><button type="button" class="primary" id="create-plan" ${disabled}>Créer le planning</button><button type="button" id="cancel-plan" ${disabled}>Annuler</button></div>`;
       }else if(this.screen==='sets'){
@@ -283,4 +287,3 @@
   }
   if(!customElements.get('chauffage-planning-card'))customElements.define('chauffage-planning-card',ChauffagePlanningCard);
 })();
-
