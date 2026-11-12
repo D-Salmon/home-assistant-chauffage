@@ -24,7 +24,7 @@ vm.runInNewContext(fs.readFileSync('configuration/chauffage-planning-card.js', '
 });
 
 const Card = registry.get('chauffage-planning-card');
-async function check(existing) {
+async function check(existing, missing = false) {
   const card = new Card();
   card.events = [];
   const schedules = existing ? [{entity: 'schedule.classique', name: 'Classique'}] : [];
@@ -41,7 +41,10 @@ async function check(existing) {
       calls.push(message.type);
       if (message.type === 'schedule/create') return {id: 'vacances', name: 'Vacances'};
       if (message.type === 'config/entity_registry/list') return [{platform: 'schedule', unique_id: 'vacances', entity_id: 'schedule.vacances'}];
-      if (message.type === 'get_states') return [{entity_id: 'schedule.vacances', state: 'off'}];
+      if (message.type === 'get_states') return [
+        {entity_id: 'schedule.vacances', state: 'off'},
+        ...(existing && !missing ? [{entity_id: 'schedule.classique', state: 'off'}] : []),
+      ];
       throw Error('Unexpected request: ' + message.type);
     },
     callService: async (domain, service, data) => { calls.push([domain, service, data]); },
@@ -49,17 +52,18 @@ async function check(existing) {
   await card.createSchedule();
   assert.equal(card.screen, 'choose');
   assert.equal(card.config.schedules.at(-1).entity, 'schedule.vacances');
-  assert.equal(card.config.active_schedule, existing ? 'schedule.classique' : 'schedule.vacances');
+  assert.equal(card.config.active_schedule, existing && !missing ? 'schedule.classique' : 'schedule.vacances');
   assert.equal(card.config.revision, 5);
   assert.equal(card.events[0].type, 'chauffage-planning-created');
-  assert.deepEqual(calls.slice(0, 3), ['schedule/create', 'config/entity_registry/list', 'get_states']);
-  assert.equal(calls[3][2].operation, 'settings');
-  assert.equal(calls[3][2].payload.schedules.length, existing ? 2 : 1);
+  assert.deepEqual(calls.slice(0, 4), ['schedule/create', 'config/entity_registry/list', 'get_states', 'get_states']);
+  assert.equal(calls[4][2].operation, 'settings');
+  assert.equal(calls[4][2].payload.schedules.length, existing && !missing ? 2 : 1);
+  if (missing) assert.match(card.message, /introuvable dans Home Assistant/);
 }
 
 (async () => {
   await check(false);
   await check(true);
+  await check(true, true);
   console.log('schedule creation OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });
-
