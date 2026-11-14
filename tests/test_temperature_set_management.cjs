@@ -26,7 +26,7 @@ card.events = [];
 card.setConfig({schedules: [{name: 'Classique', entity: 'schedule.classique'}], rooms: [
   {id: 'chambre', name: 'Chambre', temperatures: {confort: 21, eco: 17, nuit: 16, absent: 10}},
 ], temperature_sets: {set_123: {name: "Pas d'enfants", temperatures: {chambre: 17}}}, revision: 5});
-assert.ok(card.shadowRoot.innerHTML.includes('Tous les jeux de températures'));
+assert.ok(card.shadowRoot.innerHTML.includes('Gérer les jeux de températures'));
 card.screen = 'sets';
 card.render();
 for (const name of ['Confort', 'Éco', 'Nuit', 'Absent', 'Pas d&#39;enfants']) {
@@ -74,4 +74,3 @@ card._hass = {
   assert.equal(card.screen, 'sets');
   console.log('temperature set management OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });
-
