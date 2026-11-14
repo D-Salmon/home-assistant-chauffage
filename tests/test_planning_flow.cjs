@@ -99,4 +99,19 @@ card.shadowRoot.querySelector('#block-done').onclick();
 assert.equal(card.screen, 'overview');
 assert.equal(card.draft.thursday[0].from, '00:00');
 assert.equal(card.draft.thursday[0].to, '07:00');
+const colorCard = new (registry.get('chauffage-planning-card'))();
+colorCard.setConfig({schedules: [{name: 'Classique', entity: 'schedule.classique'}], active_schedule: 'schedule.classique', rooms: []});
+colorCard.draft = {
+  monday: [{from: '07:00', to: '08:00', data: {profil: 'confort'}}],
+  tuesday: [{from: '07:00:00', to: '08:00:00', data: {profil: 'confort'}}],
+  wednesday: [{from: '07:00', to: '08:00', data: {profil: 'eco'}}],
+  thursday: [], friday: [], saturday: [], sunday: [],
+};
+colorCard.render();
+const dayButton = day => colorCard.shadowRoot.innerHTML.match(new RegExp(`<button type="button" data-day="${day}"[^>]*>`))[0];
+const dayColor = day => dayButton(day).match(/--day-color:([^";]+)/)?.[1];
+assert.equal(dayColor('monday'), dayColor('tuesday'));
+assert.notEqual(dayColor('monday'), dayColor('wednesday'));
+assert.match(dayButton('thursday'), /data-scheduled="false"/);
+assert.equal(dayColor('thursday'), undefined);
 console.log('planning day flow OK');
