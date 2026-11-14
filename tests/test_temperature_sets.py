@@ -56,6 +56,18 @@ class TemperatureSetTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "introuvable"):
             model.change(changed, "remove_temperature_set", {"id": "eco"}, 0)
 
+    def test_room_editor_saves_integrated_and_custom_temperatures_together(self):
+        room_id = self.room["id"]
+        self.data = model.change(self.data, "save_temperature_set", {"id": None, "name": "Pas d'enfants", "temperatures": {room_id: 17}}, 0)
+        set_id = next(iter(self.data["settings"]["temperature_sets"]))
+        payload = {"id": room_id, "name": "Chambre", "entity": "climate.chambre", "temperatures": {"confort": 22, "eco": 16, "nuit": 18, "absent": 14}, "custom_temperatures": {set_id: 17.5}}
+        changed = model.change(self.data, "save_room", payload, 0)
+        self.assertEqual(changed["rooms"][0]["temperatures"]["confort"], 22)
+        self.assertEqual(changed["settings"]["temperature_sets"][set_id]["temperatures"][room_id], 17.5)
+        self.assertEqual(self.data["settings"]["temperature_sets"][set_id]["temperatures"][room_id], 17)
+        with self.assertRaisesRegex(ValueError, "jeux de températures ont changé"):
+            model.change(self.data, "save_room", {**payload, "custom_temperatures": {}}, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

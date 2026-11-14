@@ -25,7 +25,7 @@
       let last=0;
       for(const b of blocks){
         const from=minutes(b.from),to=minutes(b.to,true);
-        if(from>=to)throw new Error('La fin doit être après le début. Coupez les plages nocturnes à minuit.');
+        if(from>=to)throw new Error('La fin doit être après le début dans chaque journée. Modifiez la plage depuis la carte pour franchir minuit.');
         if(from<last)throw new Error('Deux plages se chevauchent : '+LABELS[DAYS.indexOf(day)]+'.');
         if(!Object.hasOwn(PROFILES,b.data?.profil ?? 'confort')&&!Object.hasOwn(sets,b.data?.profil ?? 'confort'))throw new Error('Choisissez un jeu de températures valide pour chaque plage.');
         last=to;
@@ -197,7 +197,7 @@
         if(!block){this.screen='overview';return this.render();}
         const profile=block.data?.profil??'confort';
         body=`${back}<h2>${this.newBlock?'Ajouter une plage horaire':'Modifier une plage horaire'}</h2>
-          <div class="field-row"><div><label for="from">Début</label><input id="from" inputmode="text" value="${esc(block.from)}" placeholder="6:30" ${disabled}></div><div><label for="to">Fin</label><input id="to" inputmode="text" value="${esc(block.to)}" placeholder="8" ${disabled}></div></div><p class="hint">Exemples : 6 = 06:00 ; 6:30 = 06:30.</p>
+          <div class="field-row"><div><label for="from">Début</label><input id="from" inputmode="text" value="${esc(block.from)}" placeholder="23:30" ${disabled}></div><div><label for="to">Fin, éventuellement le lendemain</label><input id="to" inputmode="text" value="${esc(block.to)}" placeholder="6:30" ${disabled}></div></div><p class="hint">Exemples : 6 = 06:00 ; 6:30 = 06:30. Une fin antérieure au début se place le lendemain.</p>
           <h3>Jeu de températures</h3><div class="choices">${Object.entries(names).map(([id,name])=>`<button type="button" data-profile="${esc(id)}" class="choice ${profile===id?'chosen':''}" aria-pressed="${profile===id}" ${disabled}>${badge(id)}<strong>${esc(name)}</strong><span class="choice-check" aria-hidden="true">${profile===id?'✓':'○'}</span></button>`).join('')}</div>
           ${roomRows(profile)}<div class="actions"><button type="button" class="primary" id="block-done" ${disabled}>Valider la plage</button><button type="button" id="block-delete" ${disabled}>${this.newBlock?'Annuler':'Supprimer la plage'}</button></div><p class="hint">${this.newBlock?'Si une plage existe déjà à ces heures, elle sera conservée avant et après la nouvelle plage. ':''}Après validation, enregistrez le planning pour appliquer les horaires.</p>`;
       }else if(this.screen==='set'){
@@ -249,25 +249,26 @@
       if(q('#block-done'))q('#block-done').onclick=()=>{
         try{
           const block=blocks[this.editIndex],from=minutes(block.from),to=minutes(block.to,true);
-          if(to<=from)throw new Error('La fin doit être après le début.');
-          block.from=formatTime(from);block.to=formatTime(to);
-          if(this.newBlock){
+          if(to===from)throw new Error('Indiquez une heure de fin différente du début.');
+          const overnight=to<from,nextDay=DAYS[(DAYS.indexOf(this.day)+1)%DAYS.length];
+          const overlay=(day,start,end,ignoreIndex=-1)=>{
+            if(start===end)return;
             const adjusted=[];
-            for(const [i,existing] of blocks.entries()){
-              if(i===this.editIndex)continue;
+            for(const [i,existing] of (this.draft[day]||[]).entries()){
+              if(i===ignoreIndex)continue;
               const left=minutes(existing.from),right=minutes(existing.to,true);
-              if(right<=from||left>=to){adjusted.push(existing);continue;}
-              if(left<from)adjusted.push({...existing,to:formatTime(from)});
-              if(right>to)adjusted.push({...existing,from:formatTime(to)});
+              if(right<=start||left>=end){adjusted.push(existing);continue;}
+              if(left<start)adjusted.push({...existing,to:formatTime(start)});
+              if(right>end)adjusted.push({...existing,from:formatTime(end)});
             }
-            adjusted.push(block);
+            adjusted.push({...block,from:formatTime(start),to:formatTime(end)});
             adjusted.sort((a,b)=>minutes(a.from)-minutes(b.from));
-            this.draft[this.day]=adjusted;this.newBlock=false;
-          }else{
-            const sorted=[...blocks].sort((a,b)=>minutes(a.from)-minutes(b.from));
-            if(sorted.some((item,i)=>i>0&&minutes(item.from)<minutes(sorted[i-1].to,true)))throw new Error('Cette plage chevauche une autre plage.');
-          }
-          this.screen='overview';this.message='Plage prête. Enregistrez le planning pour l’appliquer.';this.render();
+            this.draft[day]=adjusted;
+          };
+          overlay(this.day,from,overnight?1440:to,this.editIndex);
+          if(overnight&&to>0)overlay(nextDay,0,to);
+          this.newBlock=false;this.dirty=true;this.screen='overview';
+          this.message=overnight?`Plage répartie entre ${LABELS[DAYS.indexOf(this.day)]} et ${LABELS[DAYS.indexOf(nextDay)]}. Enregistrez le planning.`:'Plage prête. Enregistrez le planning pour l’appliquer.';this.render();
         }catch(error){this.message=error.message;this.render();}
       };
       if(q('#block-delete'))q('#block-delete').onclick=()=>{blocks.splice(this.editIndex,1);this.dirty=this.newBlock?this.dirtyBeforeAdd:true;this.newBlock=false;this.screen='overview';this.render();};

@@ -67,7 +67,7 @@ def change(data, operation, payload, now):
         raise ValueError("Données invalides.")
     rooms, settings = new["rooms"], new["settings"]
     if operation == "save_room":
-        allowed = {"id", "name", "entity", "temperatures", "mode", "last_seen", "pause_entity", "resume_override"}
+        allowed = {"id", "name", "entity", "temperatures", "custom_temperatures", "mode", "last_seen", "pause_entity", "resume_override"}
         if set(payload) - allowed:
             raise ValueError("Champ de pièce inconnu.")
         resume_override = payload.get("resume_override", False)
@@ -77,7 +77,7 @@ def change(data, operation, payload, now):
         if "id" in payload and old is None:
             raise ValueError("La pièce n’existe plus. Rechargez la page.")
         room = deepcopy(old) if old else {"id": uuid.uuid4().hex, "mode": "planning", "override": None, "last_seen": "", "pause_entity": "", "temperatures": deepcopy(DEFAULT_TEMPS)}
-        room.update({key: value for key, value in payload.items() if key != "resume_override"})
+        room.update({key: value for key, value in payload.items() if key not in ("resume_override", "custom_temperatures")})
         room["name"] = label(room.get("name"))
         room["entity"] = entity_id(room.get("entity"), "climate")
         room["last_seen"] = entity_id(room["last_seen"], "sensor", optional=True)
@@ -100,6 +100,13 @@ def change(data, operation, payload, now):
             rooms.append(room)
             for item in settings.get("temperature_sets", {}).values():
                 item["temperatures"][room["id"]] = room["temperatures"]["eco"]
+        custom_temperatures = payload.get("custom_temperatures")
+        if custom_temperatures is not None:
+            sets = settings.get("temperature_sets", {})
+            if not isinstance(custom_temperatures, dict) or set(custom_temperatures) != set(sets):
+                raise ValueError("Les jeux de températures ont changé. Rechargez la carte.")
+            for set_id, value in custom_temperatures.items():
+                sets[set_id]["temperatures"][room["id"]] = temperature(value)
     elif operation in ("remove_room", "override", "resume"):
         room = next((r for r in rooms if r["id"] == payload.get("id")), None)
         if room is None:
