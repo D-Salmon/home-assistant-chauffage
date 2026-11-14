@@ -243,12 +243,12 @@
       if(q('#reload'))q('#reload').onclick=()=>this.load();
       if(q('#copy'))q('#copy').onclick=()=>{let count=0;this.shadowRoot.querySelectorAll('.copies input:checked').forEach(input=>{this.draft[input.value]=clone(this.draft[this.day]);count++;});if(count){this.dirty=true;this.message=`${count} jour(s) remplacé(s). Enregistrez le planning.`;this.render();}};
       if(q('#copy-weekdays'))q('#copy-weekdays').onclick=()=>{for(const day of DAYS.slice(0,5))this.draft[day]=clone(this.draft[this.day]);this.dirty=true;this.message='Journée copiée du lundi au vendredi. Enregistrez le planning pour appliquer.';this.render();};
-      if(q('#from'))q('#from').onchange=e=>{blocks[this.editIndex].from=e.target.value;this.dirty=true;};
-      if(q('#to'))q('#to').onchange=e=>{blocks[this.editIndex].to=e.target.value;this.dirty=true;};
+      if(q('#from'))q('#from').oninput=q('#from').onchange=e=>{blocks[this.editIndex].from=e.target.value;this.dirty=true;};
+      if(q('#to'))q('#to').oninput=q('#to').onchange=e=>{blocks[this.editIndex].to=e.target.value;this.dirty=true;};
       this.shadowRoot.querySelectorAll('[data-profile]').forEach(button=>button.onclick=()=>{blocks[this.editIndex].data={...blocks[this.editIndex].data,profil:button.dataset.profile};this.dirty=true;this.render();});
       if(q('#block-done'))q('#block-done').onclick=()=>{
         try{
-          const block=blocks[this.editIndex],from=minutes(block.from),to=minutes(block.to,true);
+          const current=blocks[this.editIndex],block={...current,from:q('#from')?.value??current.from,to:q('#to')?.value??current.to},from=minutes(block.from),to=minutes(block.to,true);
           if(to===from)throw new Error('Indiquez une heure de fin différente du début.');
           const overnight=to<from,nextDay=DAYS[(DAYS.indexOf(this.day)+1)%DAYS.length];
           const overlay=(day,start,end,ignoreIndex=-1)=>{
