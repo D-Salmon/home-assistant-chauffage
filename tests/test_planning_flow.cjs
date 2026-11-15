@@ -41,6 +41,7 @@ assert.ok(card.shadowRoot.innerHTML.includes('Choisissez un jour'));
 assert.ok(!card.shadowRoot.innerHTML.includes('Chambre Valentine'));
 card.shadowRoot.querySelectorAll('[data-day]')[0].onclick();
 assert.equal(card.screen, 'overview');
+assert.match(card.shadowRoot.innerHTML, /id="back" class="back"><ha-icon icon="mdi:arrow-left"/);
 assert.ok(card.shadowRoot.innerHTML.includes("Pas d&#39;enfants"));
 assert.ok(card.shadowRoot.innerHTML.includes('Chambre Valentine'));
 assert.ok(card.shadowRoot.innerHTML.includes('class="day-track"'));

@@ -1,2 +1,2 @@
-import "./chauffage-planning-card.js?v=3.2.50";
-import "./ma-maison-chauffage-card.js?v=3.2.50";
+import "./chauffage-planning-card.js?v=3.2.51";
+import "./ma-maison-chauffage-card.js?v=3.2.51";

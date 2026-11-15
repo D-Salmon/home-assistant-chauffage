@@ -39,7 +39,7 @@ card.historyStart=new Date(now-86400000);card.historyEnd=new Date(now);
 card.historyData=[{lu:(now-3600000)/1000,a:{current_temperature:19,temperature:21}},{lu:now/1000,a:{current_temperature:20,temperature:21}}];
 card.render();
 assert.match(card.shadowRoot.innerHTML,/Historique des températures/);
-assert.match(card.shadowRoot.innerHTML,/id="history-back"[^>]*>← Pièces/);
+assert.match(card.shadowRoot.innerHTML,/id="history-back"[^>]*><ha-icon icon="mdi:arrow-left"[^>]*><\/ha-icon><span>Pièces<\/span>/);
 assert.match(card.shadowRoot.innerHTML,/class="history-current" points="[^"]+"/);
 assert.match(card.shadowRoot.innerHTML,/class="history-target" points="[^"]+"/);
 (async()=>{
