@@ -25,7 +25,9 @@ const registryState = {entity_id:'sensor.registry',attributes:{integration:'ma_m
 card.setConfig({});
 card.hass = {states:{'sensor.registry':registryState,'switch.boiler':relayState,'climate.salon':valveState}};
 card.view = 'room';card.selected = 'r1';card.render();
-assert.match(card.shadowRoot.innerHTML, /data-nav="home" aria-pressed="false"/);
+assert.match(card.shadowRoot.innerHTML, /data-nav="home" aria-pressed="true"/);
+assert.match(card.shadowRoot.innerHTML, /<nav class="nav" aria-label="Navigation chauffage">/);
+assert.match(card.shadowRoot.innerHTML, /mdi:home-outline/);
 assert.doesNotMatch(card.shadowRoot.innerHTML, /\.room-card \.nav button\[data-nav="home"\]\{color:#3475eb/);
 assert.match(card.shadowRoot.innerHTML, /id="temperature-dial"[^>]*role="slider"[^>]*tabindex="0"/);
 assert.match(card.shadowRoot.innerHTML, /aria-valuenow="20"/);
