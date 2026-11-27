@@ -11,7 +11,8 @@ function states(){
     'sensor.registry':{entity_id:'sensor.registry',attributes:{integration:'ma_maison_chauffage',configuration:clone(model),status:{rooms:model.rooms.map(r=>({id:r.id,current_temperature:19,temperature:20,profile:r.mode})),relay:'off',faults:[]}}},
     'switch.boiler':{entity_id:'switch.boiler',attributes:{friendly_name:'Chaudière'}},
     'schedule.week':{entity_id:'schedule.week',attributes:{friendly_name:'Semaine'}},
-    'sensor.outdoor':{entity_id:'sensor.outdoor',state:'8.5',attributes:{friendly_name:'Extérieur',unit_of_measurement:'°C'}}
+    'sensor.outdoor':{entity_id:'sensor.outdoor',state:'8.5',attributes:{friendly_name:'Extérieur',unit_of_measurement:'°C'}},
+    'number.valve_0_external_temperature_input':{entity_id:'number.valve_0_external_temperature_input',state:'19',attributes:{friendly_name:'Vanne 0 External temperature'}}
   };
   for(let i=0;i<22;i++)result['climate.valve_'+i]={entity_id:'climate.valve_'+i,attributes:{friendly_name:'Vanne '+i,temperature:20}};
   return result;
@@ -53,6 +54,10 @@ assert.equal(all('.outdoor-tile').length,0);
 model.settings.outdoor_sensor='';hass.states=states();card.hass=hass;
 
 q('[data-nav="manage"]').click();q('#add').click();
+assert.equal(q('#external-temperature-field').hidden,true);
+input('#external-temperature-sensor','sensor.outdoor');assert.equal(q('#external-temperature-field').hidden,false);
+input('#external-temperature-input','number.valve_0_external_temperature_input');
+input('#external-temperature-sensor','');assert.equal(q('#external-temperature-field').hidden,true);assert.equal(q('#external-temperature-input').value,'');
 input('#room-name','Chambre enfant');input('#room-entity','climate.valve_0');
 submit('#room-form');await settle();
 assert.equal(model.rooms.length,1);assert.equal(model.rooms[0].temperatures.absent,14);assert.equal(model.rooms[0].mode,'planning');

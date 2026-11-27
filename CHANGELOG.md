@@ -1,5 +1,10 @@
 # Historique
 
+## 3.2.54 — 27 novembre 2026
+
+- Masque l’entrée `External temperature` tant que la pièce utilise le capteur interne de la vanne.
+- Affiche immédiatement cette entrée lorsqu’un capteur de température externe est choisi et la vide lors du retour au capteur interne.
+
 ## 3.2.53 — 27 novembre 2026
 
 - Ajoute, dans chaque pièce, un capteur de température externe et l’entrée `number.*external_temperature_input` de la vanne.
