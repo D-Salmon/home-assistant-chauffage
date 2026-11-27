@@ -1,6 +1,6 @@
 # Ma maison — Chauffage Home Assistant
 
-**Version 3.2.54 : l’entrée de la vanne apparaît uniquement lorsqu’un capteur de température externe est choisi.**
+**Version 3.2.55 : l’aide de l’entrée de température externe est repliée derrière un bouton « ? ».**
 
 Une intégration locale conserve une seule liste de pièces pour l’affichage, les consignes et la coordination chaudière. Le nombre de vannes n’est plus fixé à huit. Interface mobile inspirée de Home + Control pour des TRV Zigbee2MQTT et un relais chaudière à contact sec.
 

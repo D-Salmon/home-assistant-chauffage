@@ -1,5 +1,9 @@
 # Historique
 
+## 3.2.55 — 27 novembre 2026
+
+- Replie l’explication de l’entrée `External temperature` derrière le bouton d’aide « ? ».
+
 ## 3.2.54 — 27 novembre 2026
 
 - Masque l’entrée `External temperature` tant que la pièce utilise le capteur interne de la vanne.

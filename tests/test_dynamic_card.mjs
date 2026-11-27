@@ -56,6 +56,7 @@ model.settings.outdoor_sensor='';hass.states=states();card.hass=hass;
 q('[data-nav="manage"]').click();q('#add').click();
 assert.equal(q('#external-temperature-field').hidden,true);
 input('#external-temperature-sensor','sensor.outdoor');assert.equal(q('#external-temperature-field').hidden,false);
+assert.equal(q('#external-temperature-field .help').open,false);
 input('#external-temperature-input','number.valve_0_external_temperature_input');
 input('#external-temperature-sensor','');assert.equal(q('#external-temperature-field').hidden,true);assert.equal(q('#external-temperature-input').value,'');
 input('#room-name','Chambre enfant');input('#room-entity','climate.valve_0');
