@@ -26,7 +26,8 @@ const hass={
     const p=data.payload;
     if(data.operation==='save_room'){
       if(p.id){const room=model.rooms.find(r=>r.id===p.id),{resume_override,...fields}=p;Object.assign(room,fields);if(resume_override)room.override=null;}
-      else model.rooms.push({id:'room_'+model.revision,mode:'planning',last_seen:'',override:null,...p});
+      else model.rooms.push({id:'room_'+model.revision,mode:'planning',last_seen:'',override:null,...p,
+        temperatures:p.temperatures||{confort:20,eco:17,nuit:17,absent:14}});
     }else if(data.operation==='remove_room')model.rooms=model.rooms.filter(r=>r.id!==p.id);
     else if(data.operation==='settings')model.settings={...model.settings,...p};
     else if(data.operation==='override')model.rooms.find(r=>r.id===p.id).override={temperature:p.temperature,until:Date.now()/1000+p.hours*3600};
@@ -53,11 +54,11 @@ model.settings.outdoor_sensor='';hass.states=states();card.hass=hass;
 
 q('[data-nav="manage"]').click();q('#add').click();
 input('#room-name','Chambre enfant');input('#room-entity','climate.valve_0');
-input('#absent','13');submit('#room-form');await settle();
-assert.equal(model.rooms.length,1);assert.equal(model.rooms[0].temperatures.absent,13);assert.equal(model.rooms[0].mode,'planning');
+submit('#room-form');await settle();
+assert.equal(model.rooms.length,1);assert.equal(model.rooms[0].temperatures.absent,14);assert.equal(model.rooms[0].mode,'planning');
 assert.equal(card.view,'home');assert.equal(all('[data-room]').length,1);
 q('[data-room]').click();assert.equal(all('#mode').length,0);
-assert.equal(q('[data-nav="home"]').getAttribute('aria-pressed'),'false');
+assert.equal(q('[data-nav="home"]').getAttribute('aria-pressed'),'true');
 q('[data-nav="home"]').click();assert.equal(card.view,'home');
 assert.equal(q('[data-nav="home"]').getAttribute('aria-pressed'),'true');
 q('[data-room]').click();
@@ -68,11 +69,11 @@ assert.equal(q('.room-detail-override h3').textContent,'Consigne temporaire');
 assert.equal(q('.room-detail-override button[type="submit"]').disabled,true);
 assert.equal(q('#temperature-dial').getAttribute('aria-disabled'),'true');
 assert.equal(q('#override-minus').disabled,true);assert.equal(q('#override-plus').disabled,true);
-hass.states['sensor.registry'].attributes.status.rooms[0].current_temperature=21;card.hass=hass;
+hass.states=states();hass.states['sensor.registry'].attributes.status.rooms[0].current_temperature=21;card.hass=hass;
 assert.equal(q('.room-detail-temperature strong').textContent,'21 °C');
 assert.equal(all('#absent').length,0);
 q('#resume').click();await settle();assert.equal(calls.at(-1).operation,'resume');assert.equal(calls.at(-1).payload.mode,'planning');
-q('[data-nav="manage"]').click();q('[data-edit]').click();assert.equal(all('#mode').length,0);input('#eco','16');submit('#room-form');await settle();assert.equal(model.rooms[0].temperatures.eco,16);assert.equal(card.view,'home');
+q('[data-nav="manage"]').click();q('[data-edit]').click();assert.equal(all('#mode').length,0);submit('#room-form');await settle();assert.equal(model.rooms[0].temperatures.eco,17);assert.equal(card.view,'home');
 model.settings.enabled=true;hass.states=states();card.hass=hass;
 q('[data-room]').click();
 assert.equal(q('.room-detail-override button[type="submit"]').disabled,false);
@@ -88,7 +89,7 @@ input('#override-temp','21');input('#hours','2');submit('#override-form');await 
 assert.deepEqual(calls.at(-1).payload,{id:model.rooms[0].id,temperature:21,hours:2});
 assert.equal(card.view,'home');assert.equal(q('.setpoint').textContent,'21 °C');q('[data-room]').click();
 assert.match(q('.valve-feedback').textContent,/Consigne demandée : 21 °C.*climate\.valve_0 : 20 °C/);
-hass.states['climate.valve_0'].attributes.temperature=21;card.hass=hass;
+hass.states=states();hass.states['climate.valve_0'].attributes.temperature=21;card.hass=hass;
 assert.match(q('.valve-feedback').textContent,/Les valeurs correspondent dans Home Assistant/);
 assert.equal(q('.room-detail .override-until').textContent.includes('Consigne active jusqu’au'),true);
 assert.equal(q('#resume').textContent,'Retour au planning');
@@ -96,7 +97,7 @@ assert.equal(all('#room-form').length,0);
 q('#resume').click();await settle();assert.equal(calls.at(-1).operation,'resume');assert.equal(model.rooms[0].override,null);
 assert.equal(model.rooms[0].mode,'planning');
 assert.equal(card.view,'home');assert.equal(all('[data-room]').length,1);
-q('[data-nav="manage"]').click();q('[data-edit]').click();input('#eco','15');q('#cancel').click();assert.equal(all('[data-room]').length,1);
+q('[data-nav="manage"]').click();q('[data-edit]').click();input('#room-name','Nom annulé');q('#cancel').click();assert.equal(all('[data-room]').length,1);
 model.rooms[0].mode='confort';model.revision++;hass.states=states();card.hass=hass;q('[data-room]').click();
 assert.equal(q('.room-detail-override button[type="submit"]').disabled,false);
 input('#override-temp','22');submit('#override-form');await settle();

@@ -1,6 +1,6 @@
 # Ma maison — Chauffage Home Assistant
 
-**Version 3.2.13 : le capteur extérieur s’affiche immédiatement et les boutons de navigation sont plus lisibles.**
+**Version 3.2.53 : une pièce peut transmettre une mesure de température externe à une vanne Sonoff compatible.**
 
 Une intégration locale conserve une seule liste de pièces pour l’affichage, les consignes et la coordination chaudière. Le nombre de vannes n’est plus fixé à huit. Interface mobile inspirée de Home + Control pour des TRV Zigbee2MQTT et un relais chaudière à contact sec.
 
@@ -10,6 +10,7 @@ Une intégration locale conserve une seule liste de pièces pour l’affichage, 
 - **Réglages → Capteur extérieur** : si un capteur °C est choisi et disponible, sa température apparaît à côté de l’état du chauffage sur l’accueil.
 - **Réglages → Nom de la maison** : le bandeau d’accueil reprend le nom enregistré. Il devient rouge quand le relais chaudière est allumé et revient au bleu à l’arrêt.
 - **Pièces → Ajouter une vanne** : choisir une entité climate et le nom de la pièce. Ajout/retrait pris en compte sans redémarrage.
+- **Pièces → Capteurs facultatifs** : associer un capteur de pièce en °C à l’entrée `External temperature` d’une Sonoff TRV2/TRV-ZBT. La mesure est synchronisée automatiquement vers l’entité `number.*external_temperature_input`.
 - Mode **Planning** ou profil permanent pour chaque pièce, notamment Absent pour une chambre peu occupée.
 - Consigne manuelle temporaire avec durée réglable et retour au planning ; échéance conservée après redémarrage.
 - Liste de plannings sélectionnée dans les réglages, avec les noms d’entités de votre choix.
@@ -48,6 +49,8 @@ Les versions 3.0 à 3.1 ont été testées localement pour les profils, temporis
 Retirer une pièce arrête sa gestion sans changer sa dernière consigne physique. Mettre la vanne sur OFF dans HA pour arrêter ce radiateur. Les associations et températures V2 doivent être reportées via l’interface ; l’import n’est pas automatique.
 
 Les horaires sont communs aux pièces en mode Planning ; les températures sont propres à chaque pièce. Les profils permanents restent prioritaires. Les modifications physiques directement sur une TRV ne créent pas de dérogation dans ce pilote.
+
+Pour une température externe Sonoff via Zigbee2MQTT, activez l’entité `external_temperature_input`, sélectionnez-la avec le capteur de la pièce, puis réglez la source de température de la vanne sur externe dans Home Assistant. La synchronisation est effectuée par cette intégration ; aucune automation séparée n’est nécessaire. Voir la [fiche Zigbee2MQTT de la TRV-ZBT](https://www.zigbee2mqtt.io/devices/TRV-ZBT.html).
 
 HA doit fonctionner pour envoyer les ordres. Ce projet ne fournit pas d’arrêt autonome du relais en cas de panne de HA, du réseau Zigbee ou de Zigbee2MQTT. Les détails des temporisations, des défauts et des essais matériels sont dans le guide.
 

@@ -51,6 +51,23 @@ class ModelTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 model.temperature(value)
 
+    def test_external_temperature_entities_are_paired_and_unique(self):
+        data = room(model.initial_data(), external_temperature_sensor="sensor.bedroom_temperature",
+                    external_temperature_input="number.bedroom_trv_external_temperature_input")
+        configured = data["rooms"][0]
+        self.assertEqual(configured["external_temperature_sensor"], "sensor.bedroom_temperature")
+        self.assertEqual(configured["external_temperature_input"], "number.bedroom_trv_external_temperature_input")
+        for payload in (
+                {"external_temperature_sensor": "sensor.other"},
+                {"external_temperature_input": "number.other"},
+                {"external_temperature_sensor": "number.bad", "external_temperature_input": "number.other"},
+                {"external_temperature_sensor": "sensor.other", "external_temperature_input": "sensor.bad"}):
+            with self.assertRaises(ValueError):
+                room(model.initial_data(), **payload)
+        with self.assertRaises(ValueError):
+            room(data, 1, external_temperature_sensor="sensor.other",
+                 external_temperature_input="number.bedroom_trv_external_temperature_input")
+
     def test_all_profiles_and_durable_override(self):
         data = room(model.initial_data())
         r = data["rooms"][0]
@@ -64,6 +81,7 @@ class ModelTests(unittest.TestCase):
         r["override"] = {"temperature": 23, "until": 1100}
         self.assertEqual(model.target(r, settings, None, 1099), (23, "manuel"))
         self.assertEqual(model.target(deepcopy(r), settings, {"state": "off"}, 1100), (18, "eco"))
+        r["override"] = None
         r["mode"] = "absent"
         self.assertEqual(model.target(r, settings, None, 1000), (13, "absent"))
         r["mode"] = "confort"
@@ -83,7 +101,7 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(updated["rooms"][0]["temperatures"], r["temperatures"])
         fixed = model.change(updated, "save_room", {"id": r["id"], "mode": "absent"}, 1000)
         self.assertIsNone(fixed["rooms"][0]["override"])
-        resumed = model.change(fixed, "resume", {"id": r["id"]}, 1000)
+        resumed = model.change(fixed, "resume", {"id": r["id"], "mode": "planning"}, 1000)
         self.assertEqual(resumed["rooms"][0]["mode"], "planning")
 
     def test_absence_and_schedule_keep_permanent_room_modes(self):
@@ -182,6 +200,8 @@ class FakeHass:
                 state.state = data["hvac_mode"]
             if action == "set_temperature":
                 state.attributes["temperature"] = data["temperature"]
+        if domain == "number" and action == "set_value":
+            self.entities[data["entity_id"]].state = str(data["value"])
         if domain == "switch":
             self.entities[data["entity_id"]].state = action.removeprefix("turn_")
 
@@ -194,10 +214,11 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.runtime.started = True
 
     async def asyncTearDown(self):
-        for task in list(self.runtime.tasks.values()):
+        for task in [*self.runtime.tasks.values(), *self.runtime.external_temperature_tasks.values()]:
             task.cancel()
-        if self.runtime.tasks:
-            await asyncio.gather(*list(self.runtime.tasks.values()), return_exceptions=True)
+        pending = [*self.runtime.tasks.values(), *self.runtime.external_temperature_tasks.values()]
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
 
     async def command(self, operation, payload, revision=None):
         return await self.runtime.command(SimpleNamespace(context=SimpleNamespace(user_id="admin"), data={"operation": operation, "payload": payload, "revision": self.runtime.data["revision"] if revision is None else revision}))
@@ -206,9 +227,31 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.hass.entities[f"climate.room_{index}"] = SimpleNamespace(state="heat", attributes={"temperature": 19, "current_temperature": 18, "hvac_action": "heating", "min_temp": 5, "max_temp": 30})
 
     async def drain(self):
-        if self.runtime.tasks:
-            await asyncio.wait_for(asyncio.gather(*list(self.runtime.tasks.values())), timeout=3)
+        pending = [*self.runtime.tasks.values(), *self.runtime.external_temperature_tasks.values()]
+        if pending:
+            await asyncio.wait_for(asyncio.gather(*pending), timeout=3)
         await asyncio.sleep(0)
+
+    async def test_external_temperature_is_sent_to_valve_and_used_in_status(self):
+        self.add_entity(0)
+        self.hass.entities["sensor.bedroom_temperature"] = SimpleNamespace(
+            state="18.34", attributes={"unit_of_measurement": "°C"})
+        self.hass.entities["number.room_0_external_temperature_input"] = SimpleNamespace(
+            state="17.0", attributes={"min": 0, "max": 99.9})
+        await self.command("save_room", {
+            "entity": "climate.room_0", "name": "Bedroom", "mode": "confort",
+            "external_temperature_sensor": "sensor.bedroom_temperature",
+            "external_temperature_input": "number.room_0_external_temperature_input",
+        })
+        await self.drain()
+        self.assertEqual(self.hass.entities["number.room_0_external_temperature_input"].state, "18.3")
+        self.assertEqual(self.runtime.status["rooms"][0]["current_temperature"], 18.3)
+        self.assertTrue(any(domain == "number" and action == "set_value" and data["value"] == 18.3
+                            for domain, action, data in self.hass.calls))
+        self.hass.calls.clear()
+        await self.runtime.tick()
+        await self.drain()
+        self.assertFalse(any(domain == "number" for domain, _, _ in self.hass.calls))
 
     async def test_add_eight_then_twenty_same_registry_controls_all(self):
         await self.command("settings", {"relay": "switch.boiler", "confirm_seconds": 0, "minimum_off": 0})

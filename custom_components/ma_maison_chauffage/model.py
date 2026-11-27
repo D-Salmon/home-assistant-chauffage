@@ -67,7 +67,8 @@ def change(data, operation, payload, now):
         raise ValueError("Données invalides.")
     rooms, settings = new["rooms"], new["settings"]
     if operation == "save_room":
-        allowed = {"id", "name", "entity", "temperatures", "custom_temperatures", "mode", "last_seen", "pause_entity", "resume_override"}
+        allowed = {"id", "name", "entity", "temperatures", "custom_temperatures", "mode", "last_seen", "pause_entity",
+                   "external_temperature_sensor", "external_temperature_input", "resume_override"}
         if set(payload) - allowed:
             raise ValueError("Champ de pièce inconnu.")
         resume_override = payload.get("resume_override", False)
@@ -76,17 +77,27 @@ def change(data, operation, payload, now):
         old = next((r for r in rooms if r["id"] == payload.get("id")), None)
         if "id" in payload and old is None:
             raise ValueError("La pièce n’existe plus. Rechargez la page.")
-        room = deepcopy(old) if old else {"id": uuid.uuid4().hex, "mode": "planning", "override": None, "last_seen": "", "pause_entity": "", "temperatures": deepcopy(DEFAULT_TEMPS)}
+        room = deepcopy(old) if old else {
+            "id": uuid.uuid4().hex, "mode": "planning", "override": None, "last_seen": "", "pause_entity": "",
+            "external_temperature_sensor": "", "external_temperature_input": "", "temperatures": deepcopy(DEFAULT_TEMPS),
+        }
         room.update({key: value for key, value in payload.items() if key not in ("resume_override", "custom_temperatures")})
         room["name"] = label(room.get("name"))
         room["entity"] = entity_id(room.get("entity"), "climate")
         room["last_seen"] = entity_id(room["last_seen"], "sensor", optional=True)
+        room["external_temperature_sensor"] = entity_id(room.get("external_temperature_sensor", ""), "sensor", optional=True)
+        room["external_temperature_input"] = entity_id(room.get("external_temperature_input", ""), "number", optional=True)
+        if bool(room["external_temperature_sensor"]) != bool(room["external_temperature_input"]):
+            raise ValueError("Choisissez à la fois le capteur externe et l’entrée External temperature de la vanne.")
         pause_entity = room.get("pause_entity", "")
         if pause_entity and (not isinstance(pause_entity, str) or not re.fullmatch(r"(?:binary_sensor|input_boolean|switch)\.[a-z0-9_]+", pause_entity)):
             raise ValueError("Choisissez une entité de fenêtre ou un interrupteur.")
         room["pause_entity"] = pause_entity
         if any(r["entity"] == room["entity"] and r["id"] != room["id"] for r in rooms):
             raise ValueError("Cette vanne est déjà utilisée par une autre pièce.")
+        if room["external_temperature_input"] and any(
+                r.get("external_temperature_input") == room["external_temperature_input"] and r["id"] != room["id"] for r in rooms):
+            raise ValueError("Cette entrée de température externe est déjà utilisée par une autre pièce.")
         if room["mode"] not in ("planning", *PROFILES):
             raise ValueError("Mode de pièce inconnu.")
         if not isinstance(room["temperatures"], dict) or set(room["temperatures"]) != set(PROFILES):

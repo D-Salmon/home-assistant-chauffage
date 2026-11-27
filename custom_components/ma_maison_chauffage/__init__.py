@@ -85,6 +85,8 @@ class HeatingRuntime:
         self.started = False
         self.reset = True
         self.tasks = {}
+        self.external_temperature_tasks = {}
+        self.external_temperature_errors = {}
         self.sent_setpoints = {}
         self.command_errors = {}
         self.retry_after = {}
@@ -101,6 +103,11 @@ class HeatingRuntime:
         had_house_name = "house_name" in self.data["settings"]
         for key, value in initial_data()["settings"].items():
             self.data["settings"].setdefault(key, value)
+        for room in self.data["rooms"]:
+            room.setdefault("last_seen", "")
+            room.setdefault("pause_entity", "")
+            room.setdefault("external_temperature_sensor", "")
+            room.setdefault("external_temperature_input", "")
         if not had_house_name:
             self.data["settings"]["house_name"] = self.house_name
 
@@ -151,6 +158,8 @@ class HeatingRuntime:
         watched.update(r["entity"] for r in self.data["rooms"])
         watched.update(r.get("pause_entity", "") for r in self.data["rooms"] if r.get("pause_entity"))
         watched.update(r["last_seen"] for r in self.data["rooms"] if r["last_seen"])
+        watched.update(r.get("external_temperature_sensor", "") for r in self.data["rooms"] if r.get("external_temperature_sensor"))
+        watched.update(r.get("external_temperature_input", "") for r in self.data["rooms"] if r.get("external_temperature_input"))
         entity = event.data.get("entity_id")
         if self.started and entity in watched:
             old_state, new_state = event.data.get("old_state"), event.data.get("new_state")
@@ -209,6 +218,10 @@ class HeatingRuntime:
             for task in self.tasks.values():
                 task.cancel()
             self.tasks.clear()
+            external_tasks = getattr(self, "external_temperature_tasks", {})
+            for task in external_tasks.values():
+                task.cancel()
+            external_tasks.clear()
             for unsub in self.unsubs:
                 unsub()
             self.unsubs.clear()
@@ -270,13 +283,25 @@ class HeatingRuntime:
                     old_rooms = {r["id"]: r for r in self.data["rooms"]}
                     new_rooms = {r["id"]: r for r in new["rooms"]}
                     for room_id, old_room in old_rooms.items():
-                        if room_id not in new_rooms or new_rooms[room_id]["entity"] != old_room["entity"]:
+                        if (room_id not in new_rooms or new_rooms[room_id]["entity"] != old_room["entity"]
+                                or new_rooms[room_id].get("external_temperature_sensor", "") != old_room.get("external_temperature_sensor", "")):
                             new_learning.pop(room_id, None)
                 if operation == "save_room":
-                    requested = call.data.get("payload", {}).get("entity")
+                    payload = call.data.get("payload", {})
+                    requested = payload.get("entity")
                     old_entities = {r["entity"] for r in self.data["rooms"]}
                     if requested and requested not in old_entities and self.hass.states.get(requested) is None:
                         raise ValueError("Vanne introuvable : " + requested)
+                    external_sensor = payload.get("external_temperature_sensor")
+                    external_input = payload.get("external_temperature_input")
+                    if external_sensor:
+                        state = self.hass.states.get(external_sensor)
+                        if state is None:
+                            raise ValueError("Capteur de température externe introuvable : " + external_sensor)
+                        if state.attributes.get("unit_of_measurement") != "°C":
+                            raise ValueError("Le capteur de température externe doit être exprimé en °C.")
+                    if external_input and self.hass.states.get(external_input) is None:
+                        raise ValueError("Entrée External temperature introuvable : " + external_input)
                 settings, previous = new["settings"], self.data["settings"]
                 if settings["relay"] != previous["relay"]:
                     old = self.hass.states.get(previous["relay"]) if previous["relay"] else None
@@ -309,10 +334,15 @@ class HeatingRuntime:
                 self.schedule_data = None
                 self.schedule_data_at = 0
             self.command_errors.clear()
+            getattr(self, "external_temperature_errors", {}).clear()
             self.retry_after.clear()
             for task in self.tasks.values():
                 task.cancel()
             self.tasks.clear()
+            external_tasks = getattr(self, "external_temperature_tasks", {})
+            for task in external_tasks.values():
+                task.cancel()
+            external_tasks.clear()
             if operation == "retry" or settings["relay"] != previous["relay"]:
                 self.reset = True
             self.publish()
@@ -321,6 +351,24 @@ class HeatingRuntime:
     def snapshot(self, entity):
         state = self.hass.states.get(entity) if entity else None
         return {"state": state.state, "attributes": dict(state.attributes)} if state else None
+
+    def external_temperature(self, room):
+        """Return the configured remote room temperature in the TRV-supported range."""
+        entity = room.get("external_temperature_sensor", "")
+        if not entity:
+            return None, None
+        state = self.snapshot(entity)
+        if not state or state["state"] in ("unknown", "unavailable"):
+            return None, "Capteur de température externe indisponible"
+        if state["attributes"].get("unit_of_measurement") != "°C":
+            return None, "Le capteur de température externe n’est pas en °C"
+        try:
+            value = round(float(state["state"]), 1)
+        except (TypeError, ValueError):
+            return None, "Mesure de température externe invalide"
+        if not 0 <= value <= 99.9:
+            return None, "Mesure externe hors limites de la vanne"
+        return value, None
 
     def desired_target(self, room, schedule, now):
         settings = self.data["settings"]
@@ -395,6 +443,41 @@ class HeatingRuntime:
         task = self.hass.async_create_task(self.pause_valve(room))
         self.tasks[key] = task
         task.add_done_callback(lambda finished: self.tasks.pop(key, None) if self.tasks.get(key) is finished else None)
+
+    def queue_external_temperature(self, room, value):
+        key = room["id"]
+        if key in self.external_temperature_tasks:
+            return
+        revision = self.data["revision"]
+        task = self.hass.async_create_task(self.sync_external_temperature(room, value, revision))
+        self.external_temperature_tasks[key] = task
+        task.add_done_callback(
+            lambda finished: self.external_temperature_tasks.pop(key, None)
+            if self.external_temperature_tasks.get(key) is finished else None)
+
+    async def sync_external_temperature(self, room, value, revision):
+        """Write a room sensor value to the TRV External temperature number entity."""
+        try:
+            async with self.limit:
+                if not self.started or self.data["revision"] != revision:
+                    return
+                current_room = next((item for item in self.data["rooms"] if item["id"] == room["id"]), None)
+                if not current_room or current_room.get("external_temperature_input") != room.get("external_temperature_input"):
+                    return
+                current_value, error = self.external_temperature(current_room)
+                if error or current_value != value:
+                    return
+                await self.service("number", "set_value", {
+                    "entity_id": current_room["external_temperature_input"], "value": value,
+                })
+                self.external_temperature_errors.pop(room["id"], None)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self.external_temperature_errors[room["id"]] = "Température externe non transmise : " + str(exc)
+            _LOGGER.warning("Transmission de la température externe impossible pour %s: %s", room["entity"], exc)
+        finally:
+            self.publish()
 
     async def pause_valve(self, room):
         try:
@@ -488,7 +571,19 @@ class HeatingRuntime:
                     _LOGGER.warning("Aperçu du planning indisponible pour %s", room["entity"], exc_info=True)
                     planning_value, planning_profile = None, "planning indisponible"
                 attrs = state["attributes"] if state else {}
-                current_temp = attrs.get("current_temperature")
+                external_temp, external_fault = self.external_temperature(room)
+                current_temp = external_temp if external_temp is not None else attrs.get("current_temperature")
+                if room.get("external_temperature_input") and external_fault is None:
+                    external_input = self.snapshot(room["external_temperature_input"])
+                    if not external_input or external_input["state"] in ("unknown", "unavailable"):
+                        external_fault = "Entrée External temperature indisponible"
+                    else:
+                        try:
+                            input_value = float(external_input["state"])
+                        except (TypeError, ValueError):
+                            input_value = None
+                        if input_value is None or abs(input_value - external_temp) >= .05:
+                            self.queue_external_temperature(room, external_temp)
                 learned = self.learning.get(room["id"], [])
                 outdoor_state = self.snapshot(s.get("outdoor_sensor", ""))
                 try:
@@ -499,14 +594,14 @@ class HeatingRuntime:
                 cool_minutes, cool_count = estimate_minutes(learned, current_temp, room["temperatures"]["eco"], now, s["anticipation_window_days"], False, outdoor_temp)
                 anticipating = profile == "anticipation chauffe"
                 stopping_early = profile == "anticipation arrêt"
-                fault = None
-                if not state or state["state"] in ("unknown", "unavailable"):
+                fault = external_fault or getattr(self, "external_temperature_errors", {}).get(room["id"])
+                if fault is None and (not state or state["state"] in ("unknown", "unavailable")):
                     fault = "Vanne indisponible"
-                elif attrs.get("hvac_action") not in ("heating", "idle", "off"):
+                elif fault is None and attrs.get("hvac_action") not in ("heating", "idle", "off"):
                     fault = "État de chauffe inconnu"
-                elif s["enabled"] and value is None and not paused:
+                elif fault is None and s["enabled"] and value is None and not paused:
                     fault = profile
-                elif value is not None and not supported_temperature(attrs, value):
+                elif fault is None and value is not None and not supported_temperature(attrs, value):
                     fault = "Consigne hors limites de la vanne"
                 if room["last_seen"]:
                     seen = self.snapshot(room["last_seen"])
@@ -529,7 +624,7 @@ class HeatingRuntime:
                     faults.append(room["name"] + " : " + fault)
                 elif s["enabled"] and not paused and attrs.get("hvac_action") == "heating":
                     heating.append(room["id"])
-                rows.append({"id": room["id"], "current_temperature": attrs.get("current_temperature"),
+                rows.append({"id": room["id"], "current_temperature": current_temp,
                              "temperature": attrs.get("temperature"), "target": value, "profile": profile,
                              "planning_target": planning_value, "planning_profile": planning_profile,
                              "hvac_action": attrs.get("hvac_action"), "fault": fault,

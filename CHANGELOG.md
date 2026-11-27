@@ -1,5 +1,11 @@
 # Historique
 
+## 3.2.53 — 27 novembre 2026
+
+- Ajoute, dans chaque pièce, un capteur de température externe et l’entrée `number.*external_temperature_input` de la vanne.
+- Transmet automatiquement la mesure en °C à la vanne Sonoff, l’utilise pour l’affichage et l’apprentissage, et signale une source indisponible.
+- Conserve la configuration existante : les pièces sans capteur externe continuent d’utiliser la mesure interne de leur vanne.
+
 ## 3.2.13 — 7 novembre 2026
 
 - Met à jour immédiatement l’accueil après l’enregistrement des réglages, notamment du capteur extérieur, sans recharger la page.

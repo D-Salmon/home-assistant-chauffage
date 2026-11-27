@@ -52,6 +52,8 @@ Chaque fiche gère une vanne ; une vanne ne peut appartenir à deux pièces. Le 
 
 Dans la modification d’une pièce, **Déclencheur de pause** permet de choisir un `binary_sensor`, un `input_boolean` ou un `switch`. Quand l’entité est active (`on`), la vanne de cette pièce est mise sur OFF et elle ne demande pas la chaudière. Quand elle redevient inactive, le chauffage reprend selon le mode et le planning courants. Une entité indisponible suspend également la pièce par sécurité. Cela convient notamment à un capteur de fenêtre ou à un interrupteur maintenu ; il n’y a pas de durée temporisée.
 
+Dans **Capteurs facultatifs**, une pièce peut aussi recevoir un capteur de température en °C et l’entité `number` correspondant à **External temperature** de sa vanne. Pour une Sonoff TRV2/TRV-ZBT via Zigbee2MQTT, cette entité contient généralement `external_temperature_input` dans son identifiant. Les deux champs se configurent ensemble. Réglez aussi la source de température de la vanne sur externe dans sa fiche Home Assistant. L’intégration transmet chaque nouvelle mesure à la vanne, l’affiche comme température actuelle et l’utilise pour l’apprentissage. Si la source ou l’entrée devient indisponible, la pièce est exclue de la demande chaudière par sécurité. Sans ces champs, le capteur interne de la vanne reste utilisé.
+
 ## Les quatre profils
 
 Chaque pièce possède **Confort, Éco, Nuit et Absent**, indépendants, entre 5 et 25 °C par pas de 0,5 °C. Les limites annoncées par la vanne sont contrôlées avant envoi.
