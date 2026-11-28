@@ -27,6 +27,15 @@ class TemperatureSetTests(unittest.TestCase):
                 "running_state_topic": "zigbee2mqtt/Vanne Valentine/set",
             }, 0)
 
+    def test_reorder_rooms_persists_only_a_complete_unique_order(self):
+        data = model.change(self.data, "save_room", {"name": "Salon", "entity": "climate.salon"}, 0)
+        first, second = (room["id"] for room in data["rooms"])
+        reordered = model.change(data, "reorder_rooms", {"ids": [second, first]}, 0)
+        self.assertEqual([room["id"] for room in reordered["rooms"]], [second, first])
+        self.assertEqual([room["id"] for room in data["rooms"]], [first, second])
+        with self.assertRaisesRegex(ValueError, "Ordre des pièces invalide"):
+            model.change(data, "reorder_rooms", {"ids": [first, first]}, 0)
+
     def test_custom_set_drives_active_schedule_and_preserves_standard_profiles(self):
         room_id = self.room["id"]
         self.data = model.change(self.data, "save_temperature_set", {"id": None, "name": "Pas d'enfants", "temperatures": {room_id: 18}}, 0)

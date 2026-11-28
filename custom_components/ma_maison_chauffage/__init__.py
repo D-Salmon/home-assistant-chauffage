@@ -449,16 +449,17 @@ class HeatingRuntime:
             if settings["active_schedule"] != previous["active_schedule"]:
                 self.schedule_data = None
                 self.schedule_data_at = 0
-            self.command_errors.clear()
-            getattr(self, "external_temperature_errors", {}).clear()
-            self.retry_after.clear()
-            for task in self.tasks.values():
-                task.cancel()
-            self.tasks.clear()
-            external_tasks = getattr(self, "external_temperature_tasks", {})
-            for task in external_tasks.values():
-                task.cancel()
-            external_tasks.clear()
+            if operation != "reorder_rooms":
+                self.command_errors.clear()
+                getattr(self, "external_temperature_errors", {}).clear()
+                self.retry_after.clear()
+                for task in self.tasks.values():
+                    task.cancel()
+                self.tasks.clear()
+                external_tasks = getattr(self, "external_temperature_tasks", {})
+                for task in external_tasks.values():
+                    task.cancel()
+                external_tasks.clear()
             if operation == "retry" or settings["relay"] != previous["relay"]:
                 self.reset = True
             self.publish()
