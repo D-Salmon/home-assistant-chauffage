@@ -26,6 +26,8 @@ assert.match(card.shadowRoot.innerHTML,/data-history="r1"/);
 card.view='edit';card.selected='r1';card.render();
 assert.match(card.shadowRoot.innerHTML,/Identification/);
 assert.match(card.shadowRoot.innerHTML,/Capteurs facultatifs/);
+assert.match(card.shadowRoot.innerHTML,/L’état de chauffe est détecté automatiquement via Zigbee2MQTT/);
+assert.match(card.shadowRoot.innerHTML,/Topic MQTT manuel \(si nécessaire\)/);
 assert.match(card.shadowRoot.innerHTML,/Température mesurée dans la pièce/);
 assert.doesNotMatch(card.shadowRoot.innerHTML,/id="external-temperature-field" hidden/);
 assert.match(card.shadowRoot.innerHTML,/value="sensor.chambre_temperature" selected/);
@@ -59,3 +61,4 @@ assert.match(card.shadowRoot.innerHTML,/class="history-target" points="[^"]+"/);
   assert.match(card.shadowRoot.innerHTML,/7 jours/);
   console.log('rooms, settings and history render OK');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+

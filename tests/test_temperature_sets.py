@@ -15,6 +15,18 @@ class TemperatureSetTests(unittest.TestCase):
         self.data = model.change(self.data, "save_room", {"name": "Chambre", "entity": "climate.chambre"}, 0)
         self.room = self.data["rooms"][0]
 
+    def test_room_accepts_unique_zigbee_state_topic(self):
+        updated = model.change(self.data, "save_room", {
+            "id": self.room["id"], "name": self.room["name"], "entity": self.room["entity"],
+            "running_state_topic": "zigbee2mqtt/Vanne Valentine",
+        }, 0)
+        self.assertEqual(updated["rooms"][0]["running_state_topic"], "zigbee2mqtt/Vanne Valentine")
+        with self.assertRaisesRegex(ValueError, "topic d’état"):
+            model.change(self.data, "save_room", {
+                "id": self.room["id"], "name": self.room["name"], "entity": self.room["entity"],
+                "running_state_topic": "zigbee2mqtt/Vanne Valentine/set",
+            }, 0)
+
     def test_custom_set_drives_active_schedule_and_preserves_standard_profiles(self):
         room_id = self.room["id"]
         self.data = model.change(self.data, "save_temperature_set", {"id": None, "name": "Pas d'enfants", "temperatures": {room_id: 18}}, 0)
@@ -71,3 +83,4 @@ class TemperatureSetTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

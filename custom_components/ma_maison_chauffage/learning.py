@@ -37,10 +37,10 @@ def estimate_minutes(samples, current, target, now, window_days, warming, outdoo
     return min(180, max(5, abs(target - current) / median(usable))), len(usable)
 
 
-def upcoming_block(schedule_data, now):
-    """Return the next profile transition, including block ends back to Eco."""
+def upcoming_blocks(schedule_data, now):
+    """Return future schedule transitions in order, including returns to Eco."""
     if not isinstance(schedule_data, dict):
-        return None, None
+        return []
     names = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
     candidates = []
     for offset in range(8):
@@ -48,7 +48,7 @@ def upcoming_block(schedule_data, now):
         for block in schedule_data.get(names[day.weekday()], []):
             try:
                 profile = (block.get("data") or {}).get("profil", "confort")
-                if profile not in ("confort", "eco", "nuit", "absent"):
+                if not isinstance(profile, str) or not profile:
                     continue
                 for field, next_profile, priority in (("from", profile, 0), ("to", "eco", 1)):
                     hour, minute, *_ = map(int, block[field].split(":"))
@@ -62,7 +62,17 @@ def upcoming_block(schedule_data, now):
                         candidates.append((stamp.timestamp(), priority, next_profile))
             except (KeyError, ValueError, TypeError):
                 continue
-    if not candidates:
-        return None, None
-    stamp, _, profile = min(candidates)
-    return stamp, profile
+    transitions = []
+    seen = set()
+    for stamp, _, profile in sorted(candidates):
+        if stamp not in seen:
+            transitions.append((stamp, profile))
+            seen.add(stamp)
+    return transitions
+
+
+def upcoming_block(schedule_data, now):
+    """Return the next profile transition for existing callers."""
+    transitions = upcoming_blocks(schedule_data, now)
+    return transitions[0] if transitions else (None, None)
+
