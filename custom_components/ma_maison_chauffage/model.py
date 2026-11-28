@@ -68,7 +68,7 @@ def change(data, operation, payload, now):
     rooms, settings = new["rooms"], new["settings"]
     if operation == "save_room":
         allowed = {"id", "name", "entity", "temperatures", "custom_temperatures", "mode", "last_seen", "pause_entity",
-                   "external_temperature_sensor", "external_temperature_input", "resume_override"}
+                   "external_temperature_sensor", "external_temperature_input", "running_state_topic", "resume_override"}
         if set(payload) - allowed:
             raise ValueError("Champ de pièce inconnu.")
         resume_override = payload.get("resume_override", False)
@@ -79,12 +79,17 @@ def change(data, operation, payload, now):
             raise ValueError("La pièce n’existe plus. Rechargez la page.")
         room = deepcopy(old) if old else {
             "id": uuid.uuid4().hex, "mode": "planning", "override": None, "last_seen": "", "pause_entity": "",
-            "external_temperature_sensor": "", "external_temperature_input": "", "temperatures": deepcopy(DEFAULT_TEMPS),
+            "external_temperature_sensor": "", "external_temperature_input": "", "running_state_topic": "",
+            "temperatures": deepcopy(DEFAULT_TEMPS),
         }
         room.update({key: value for key, value in payload.items() if key not in ("resume_override", "custom_temperatures")})
         room["name"] = label(room.get("name"))
         room["entity"] = entity_id(room.get("entity"), "climate")
         room["last_seen"] = entity_id(room["last_seen"], "sensor", optional=True)
+        topic = room.get("running_state_topic", "")
+        if not isinstance(topic, str) or len(topic) > 200 or any(char in topic for char in ("+", "#", "\x00")) or topic != topic.strip() or (topic and ("/" not in topic or topic.endswith(("/", "/set", "/get")))):
+            raise ValueError("Indiquez le topic d’état Zigbee2MQTT complet, sans joker ni /set.")
+        room["running_state_topic"] = topic
         room["external_temperature_sensor"] = entity_id(room.get("external_temperature_sensor", ""), "sensor", optional=True)
         room["external_temperature_input"] = entity_id(room.get("external_temperature_input", ""), "number", optional=True)
         if bool(room["external_temperature_sensor"]) != bool(room["external_temperature_input"]):
@@ -95,6 +100,8 @@ def change(data, operation, payload, now):
         room["pause_entity"] = pause_entity
         if any(r["entity"] == room["entity"] and r["id"] != room["id"] for r in rooms):
             raise ValueError("Cette vanne est déjà utilisée par une autre pièce.")
+        if topic and any(r.get("running_state_topic") == topic and r["id"] != room["id"] for r in rooms):
+            raise ValueError("Ce topic Zigbee2MQTT est déjà utilisé par une autre pièce.")
         if room["external_temperature_input"] and any(
                 r.get("external_temperature_input") == room["external_temperature_input"] and r["id"] != room["id"] for r in rooms):
             raise ValueError("Cette entrée de température externe est déjà utilisée par une autre pièce.")
@@ -261,3 +268,4 @@ def decide(settings, count, heating, faults, actual, old, now, reset=False):
     return {"wanted": wanted, "since": since, "off_since": off_since, "actual": actual,
             "desired": desired, "attempts": attempts + int(send),
             "last_attempt": now if send else last}, send
+

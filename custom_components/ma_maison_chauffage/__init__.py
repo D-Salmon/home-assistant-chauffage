@@ -2,20 +2,25 @@
 import asyncio
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+import json
 import logging
 import time
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, EVENT_HOMEASSISTANT_STOP, EVENT_STATE_CHANGED
+from homeassistant.components import mqtt
+from homeassistant.components.mqtt.client import async_subscribe
 from homeassistant.core import callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .model import change, decide, initial_data, supported_temperature, target, valve_override_temperature
-from .learning import add_sample, estimate_minutes, upcoming_block
+from .learning import add_sample, estimate_minutes, upcoming_blocks
+from .mqtt_topics import bridge_devices, discover_topic
 from .usage import advance
 
 DOMAIN = "ma_maison_chauffage"
@@ -92,6 +97,11 @@ class HeatingRuntime:
         self.retry_after = {}
         self.limit = asyncio.Semaphore(4)
         self.last_notice = None
+        self.mqtt_unsubs = {}
+        self.mqtt_states = {}
+        self.mqtt_bridge_unsub = None
+        self.mqtt_bridges = {}
+        self.discovered_topics = {}
 
     async def load(self):
         saved = await self.store.async_load()
@@ -162,7 +172,14 @@ class HeatingRuntime:
         watched.update(r.get("external_temperature_input", "") for r in self.data["rooms"] if r.get("external_temperature_input"))
         entity = event.data.get("entity_id")
         if self.started and entity in watched:
+            if entity == s["active_schedule"]:
+                self.schedule_data = None
+                self.schedule_data_at = 0
             old_state, new_state = event.data.get("old_state"), event.data.get("new_state")
+            if new_state and new_state.state == "on" and (not old_state or old_state.state != "on"):
+                for paused_room in self.data["rooms"]:
+                    if paused_room.get("pause_entity") == entity:
+                        self.hass.async_create_task(self.pause_valve(paused_room))
             old_temp = old_state.attributes.get("temperature") if old_state else None
             new_temp = new_state.attributes.get("temperature") if new_state else None
             room = next((r for r in self.data["rooms"] if r["entity"] == entity), None)
@@ -201,7 +218,97 @@ class HeatingRuntime:
     async def start(self, _event=None):
         self.started = True
         self.reset = True
+        await self.sync_mqtt_topics()
         await self.tick()
+
+    async def sync_mqtt_topics(self):
+        """Discover valve topics by device identity, with an optional manual override."""
+        if not await mqtt.async_wait_for_mqtt_client(self.hass):
+            _LOGGER.warning("MQTT indisponible : les états de chauffe Zigbee2MQTT ne sont pas lus")
+            return
+        if self.mqtt_bridge_unsub is None:
+            self.mqtt_bridge_unsub = await async_subscribe(self.hass, "+/bridge/devices", self.mqtt_bridge_message)
+        entity_registry = er.async_get(self.hass)
+        device_registry = dr.async_get(self.hass)
+        self.discovered_topics = {}
+        for room in self.data["rooms"]:
+            entry = entity_registry.async_get(room["entity"])
+            device = device_registry.async_get(entry.device_id) if entry and entry.device_id else None
+            topic = discover_topic(entry, device, self.mqtt_bridges)
+            if topic:
+                self.discovered_topics[room["id"]] = topic
+        wanted = {room.get("running_state_topic") or self.discovered_topics.get(room["id"]) for room in self.data["rooms"]} - {None, ""}
+        for topic in set(self.mqtt_unsubs) - wanted:
+            self.mqtt_unsubs.pop(topic)()
+            self.mqtt_states.pop(topic, None)
+        missing = wanted - set(self.mqtt_unsubs)
+        if not missing:
+            return
+        for topic in sorted(missing):
+            try:
+                self.mqtt_unsubs[topic] = await async_subscribe(self.hass, topic, self.mqtt_message)
+            except Exception:
+                _LOGGER.exception("Abonnement impossible au topic de vanne %s", topic)
+
+    @callback
+    def mqtt_bridge_message(self, message):
+        try:
+            devices = bridge_devices(json.loads(message.payload))
+        except (TypeError, ValueError):
+            return
+        if devices is None:
+            return
+        if self.mqtt_bridges.get(message.topic) == devices:
+            return
+        self.mqtt_bridges[message.topic] = devices
+        if self.started:
+            self.hass.async_create_task(self.refresh_mqtt_topics())
+
+    async def refresh_mqtt_topics(self):
+        await self.sync_mqtt_topics()
+        await self.tick()
+
+    @callback
+    def mqtt_message(self, message):
+        """Accept only a valid heating state from a configured valve topic."""
+        try:
+            payload = json.loads(message.payload)
+            raw = payload.get("running_state") if isinstance(payload, dict) else None
+        except (TypeError, ValueError):
+            return
+        if raw is None:
+            return
+        state = self.normalize_heat_state(raw)
+        if state is None:
+            self.mqtt_states.pop(message.topic, None)
+        else:
+            self.mqtt_states[message.topic] = (state, time.time())
+        if self.started and not self.lock.locked():
+            self.hass.async_create_task(self.tick())
+
+    @staticmethod
+    def normalize_heat_state(value):
+        if not isinstance(value, str):
+            return None
+        value = value.lower()
+        if value in ("heat", "heating"):
+            return "heating"
+        if value in ("idle", "off"):
+            return "idle"
+        return None
+
+    def room_heat_state(self, room, attributes):
+        topic = room.get("running_state_topic") or self.discovered_topics.get(room["id"])
+        if topic and topic in self.mqtt_states:
+            state, seen_at = self.mqtt_states[topic]
+            if time.time() - seen_at <= 3600:
+                return state, "zigbee2mqtt"
+            self.mqtt_states.pop(topic, None)
+        for key in ("hvac_action", "running_state"):
+            state = self.normalize_heat_state(attributes.get(key))
+            if state is not None:
+                return state, "climate"
+        return None, "indisponible"
 
     async def stop(self):
         async with self.lock:
@@ -225,6 +332,15 @@ class HeatingRuntime:
             for unsub in self.unsubs:
                 unsub()
             self.unsubs.clear()
+            for unsub in self.mqtt_unsubs.values():
+                unsub()
+            self.mqtt_unsubs.clear()
+            self.mqtt_states.clear()
+            if self.mqtt_bridge_unsub:
+                self.mqtt_bridge_unsub()
+                self.mqtt_bridge_unsub = None
+            self.mqtt_bridges.clear()
+            self.discovered_topics.clear()
             await self.persist()
             return True
 
@@ -346,6 +462,8 @@ class HeatingRuntime:
             if operation == "retry" or settings["relay"] != previous["relay"]:
                 self.reset = True
             self.publish()
+        if operation in ("save_room", "remove_room"):
+            await self.sync_mqtt_topics()
         await self.tick()
 
     def snapshot(self, entity):
@@ -375,9 +493,6 @@ class HeatingRuntime:
         value, profile = target(room, settings, schedule, now)
         if not (settings["enabled"] and settings["anticipation_enabled"] and not settings["absent"]
                 and room["mode"] == "planning"
-                and not any((block.get("data") or {}).get("profil") in settings.get("temperature_sets", {})
-                            for day in ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
-                            for block in (self.schedule_data or {}).get(day, []))
                 and not (room.get("override") and room["override"]["until"] > now)
                 and value is not None):
             return value, profile
@@ -388,7 +503,16 @@ class HeatingRuntime:
             return value, profile
 
     def anticipated_target(self, room, settings, value, profile, now):
-        next_time, next_profile = upcoming_block(self.schedule_data, dt_util.now())
+        next_time, next_target = None, None
+        for event_time, next_profile in upcoming_blocks(self.schedule_data, dt_util.now()):
+            candidate = room["temperatures"].get(next_profile)
+            if candidate is None:
+                custom = settings.get("temperature_sets", {}).get(next_profile)
+                if custom:
+                    candidate = custom.get("temperatures", {}).get(room["id"], room["temperatures"]["eco"])
+            if candidate is not None and candidate != value:
+                next_time, next_target = event_time, candidate
+                break
         if next_time is None:
             return value, profile
         minutes = (next_time - now) / 60
@@ -400,9 +524,6 @@ class HeatingRuntime:
         except (TypeError, ValueError):
             outdoor = None
         samples = self.learning.get(room["id"], [])
-        next_target = room["temperatures"].get(next_profile)
-        if next_target is None or next_target == value:
-            return value, profile
         if next_target > value:
             lead, _ = estimate_minutes(samples, current, next_target, now, settings["anticipation_window_days"], True, outdoor)
             if minutes <= lead:
@@ -551,7 +672,7 @@ class HeatingRuntime:
             now, s = time.time(), self.data["settings"]
             schedule = self.snapshot(s["active_schedule"])
             if s["enabled"] and s["anticipation_enabled"] and s["active_schedule"]:
-                if self.schedule_data is None or now - self.schedule_data_at >= 600:
+                if self.schedule_data is None or now - self.schedule_data_at >= 60:
                     try:
                         response = await self.service("schedule", "get_schedule", {"entity_id": s["active_schedule"]}, return_response=True)
                         self.schedule_data = response.get(s["active_schedule"]) if isinstance(response, dict) else None
@@ -571,6 +692,7 @@ class HeatingRuntime:
                     _LOGGER.warning("Aperçu du planning indisponible pour %s", room["entity"], exc_info=True)
                     planning_value, planning_profile = None, "planning indisponible"
                 attrs = state["attributes"] if state else {}
+                heat_state, heat_source = self.room_heat_state(room, attrs)
                 external_temp, external_fault = self.external_temperature(room)
                 current_temp = external_temp if external_temp is not None else attrs.get("current_temperature")
                 if room.get("external_temperature_input") and external_fault is None:
@@ -597,7 +719,7 @@ class HeatingRuntime:
                 fault = external_fault or getattr(self, "external_temperature_errors", {}).get(room["id"])
                 if fault is None and (not state or state["state"] in ("unknown", "unavailable")):
                     fault = "Vanne indisponible"
-                elif fault is None and attrs.get("hvac_action") not in ("heating", "idle", "off"):
+                elif fault is None and heat_state is None:
                     fault = "État de chauffe inconnu"
                 elif fault is None and s["enabled"] and value is None and not paused:
                     fault = profile
@@ -608,9 +730,9 @@ class HeatingRuntime:
                     stamp = dt_util.parse_datetime(seen["state"]) if seen else None
                     if stamp is None or not -60 <= now - stamp.timestamp() <= s["freshness_minutes"] * 60:
                         fault = "Dernier contact trop ancien"
-                if (s["enabled"] and attrs.get("hvac_action") in ("heating", "idle") and fault is None
+                if (s["enabled"] and heat_state in ("heating", "idle") and fault is None
                         and isinstance(current_temp, (int, float))):
-                    samples, changed = add_sample(learned, now, current_temp, attrs.get("hvac_action") == "heating", s["anticipation_window_days"], outdoor_temp)
+                    samples, changed = add_sample(learned, now, current_temp, heat_state == "heating", s["anticipation_window_days"], outdoor_temp)
                     if changed or samples != learned:
                         self.learning[room["id"]] = samples
                         learning_changed = True
@@ -622,12 +744,12 @@ class HeatingRuntime:
                 fault = fault or self.command_errors.get(room["id"])
                 if fault:
                     faults.append(room["name"] + " : " + fault)
-                elif s["enabled"] and not paused and attrs.get("hvac_action") == "heating":
+                elif s["enabled"] and not paused and heat_state == "heating":
                     heating.append(room["id"])
                 rows.append({"id": room["id"], "current_temperature": current_temp,
                              "temperature": attrs.get("temperature"), "target": value, "profile": profile,
                              "planning_target": planning_value, "planning_profile": planning_profile,
-                             "hvac_action": attrs.get("hvac_action"), "fault": fault,
+                             "hvac_action": heat_state, "heat_source": heat_source, "fault": fault,
                              "anticipation_minutes": round(warm_minutes), "anticipation_cool_minutes": round(cool_minutes),
                              "learning_samples": warm_count, "learning_cool_samples": cool_count,
                              "anticipating": anticipating or stopping_early, "paused": paused})
@@ -658,3 +780,4 @@ class HeatingRuntime:
                 except Exception:
                     _LOGGER.debug("Notification indisponible", exc_info=True)
             self.publish()
+
