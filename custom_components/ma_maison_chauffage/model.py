@@ -125,6 +125,13 @@ def change(data, operation, payload, now):
                 raise ValueError("Les jeux de températures ont changé. Rechargez la carte.")
             for set_id, value in custom_temperatures.items():
                 sets[set_id]["temperatures"][room["id"]] = temperature(value)
+    elif operation == "reorder_rooms":
+        order = payload.get("ids")
+        room_ids = {room["id"] for room in rooms}
+        if set(payload) != {"ids"} or not isinstance(order, list) or len(order) != len(rooms) or any(not isinstance(item, str) for item in order) or set(order) != room_ids:
+            raise ValueError("Ordre des pièces invalide. Rechargez la carte.")
+        by_id = {room["id"]: room for room in rooms}
+        rooms[:] = [by_id[item] for item in order]
     elif operation in ("remove_room", "override", "resume"):
         room = next((r for r in rooms if r["id"] == payload.get("id")), None)
         if room is None:
