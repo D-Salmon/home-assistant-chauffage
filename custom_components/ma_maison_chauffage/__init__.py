@@ -746,7 +746,8 @@ class HeatingRuntime:
                     faults.append(room["name"] + " : " + fault)
                 elif s["enabled"] and not paused and heat_state == "heating":
                     heating.append(room["id"])
-                rows.append({"id": room["id"], "current_temperature": current_temp,
+                rows.append({"id": room["id"], "mqtt_auto_detected": bool(self.discovered_topics.get(room["id"])),
+                             "current_temperature": current_temp,
                              "temperature": attrs.get("temperature"), "target": value, "profile": profile,
                              "planning_target": planning_value, "planning_profile": planning_profile,
                              "hvac_action": heat_state, "heat_source": heat_source, "fault": fault,
